@@ -1,6 +1,4 @@
 {
-  "/api/dashboard/route": "app/api/dashboard/route.js",
-  "/api/categories/route": "app/api/categories/route.js",
-  "/admin/page": "app/admin/page.js",
-  "/admin/posts/new/page": "app/admin/posts/new/page.js"
+  "/api/posts/route": "app/api/posts/route.js",
+  "/admin/posts/page": "app/admin/posts/page.js"
 }
