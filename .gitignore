@@ -3,3 +3,4 @@ node_modules
 public/uploads/*
 package-lock.json
 tsconfig.tsbuildinfo
+.next

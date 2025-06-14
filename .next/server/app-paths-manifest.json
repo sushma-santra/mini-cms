@@ -1,12 +1,10 @@
 {
-  "/page": "app/page.js",
+  "/api/auth/login/route": "app/api/auth/login/route.js",
   "/api/dashboard/route": "app/api/dashboard/route.js",
   "/api/posts/route": "app/api/posts/route.js",
   "/api/categories/route": "app/api/categories/route.js",
-  "/api/upload/local/route": "app/api/upload/local/route.js",
   "/admin/posts/new/page": "app/admin/posts/new/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
   "/admin/page": "app/admin/page.js",
-  "/admin/categories/page": "app/admin/categories/page.js",
-  "/admin/posts/page": "app/admin/posts/page.js",
-  "/admin/users/page": "app/admin/users/page.js"
+  "/admin/posts/page": "app/admin/posts/page.js"
 }
