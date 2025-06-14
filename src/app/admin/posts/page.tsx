@@ -61,23 +61,26 @@ export default function PostsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center border-b border-gray-200 pb-5 mb-6">
+      <div className="flex justify-between items-center border-b border-gray-200 pb-4 mb-4">
         <div>
-          <h3 className="text-lg font-medium leading-6 text-gray-900">Posts</h3>
-          <p className="mt-2 max-w-4xl text-sm text-gray-500">
+          <h3 className="text-base font-medium text-gray-900">Posts</h3>
+          <p className="mt-1 text-sm text-gray-500">
             Manage your blog posts.
           </p>
         </div>
         <Link
           href="/admin/posts/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
+          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
           New Post
         </Link>
       </div>
 
       {posts.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="text-center py-8">
           <div className="text-gray-500">
             <p>No posts yet.</p>
             <Link
@@ -92,9 +95,9 @@ export default function PostsPage() {
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
             {posts.map((post: any) => (
-              <li key={post.id}>
-                <div className="px-4 py-4 flex items-center justify-between">
-                  <div className="flex-1">
+              <li key={post.id} className="hover:bg-gray-50 transition-colors">
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-indigo-600 truncate">
                         {post.title}
@@ -109,31 +112,30 @@ export default function PostsPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          {post.author?.name || 'Unknown Author'}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <p>
-                          {new Date(post.updatedAt).toLocaleDateString()}
-                        </p>
-                      </div>
+                    <div className="mt-1 flex items-center text-xs text-gray-500 space-x-2">
+                      <span>{post.author?.name || 'Unknown Author'}</span>
+                      <span>•</span>
+                      <span>{new Date(post.updatedAt).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <div className="ml-4 flex space-x-2">
+                  <div className="ml-4 flex items-center space-x-3">
                     <Link
                       href={`/admin/posts/${post.id}/edit`}
-                      className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Edit post"
                     >
-                      Edit
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
                     </Link>
                     <button
                       onClick={() => handleDelete(post.id)}
-                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                      className="text-gray-400 hover:text-red-600 transition-colors"
+                      title="Delete post"
                     >
-                      Delete
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
                   </div>
                 </div>

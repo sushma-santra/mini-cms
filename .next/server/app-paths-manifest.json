@@ -1,4 +1,11 @@
 {
+  "/api/categories/route": "app/api/categories/route.js",
+  "/api/users/route": "app/api/users/route.js",
+  "/api/dashboard/route": "app/api/dashboard/route.js",
   "/api/posts/route": "app/api/posts/route.js",
-  "/admin/posts/page": "app/admin/posts/page.js"
+  "/admin/page": "app/admin/page.js",
+  "/admin/posts/page": "app/admin/posts/page.js",
+  "/admin/categories/page": "app/admin/categories/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
+  "/admin/posts/new/page": "app/admin/posts/new/page.js"
 }

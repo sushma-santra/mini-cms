@@ -41,9 +41,8 @@ function AdminContent({ children }: { children: React.ReactNode }) {
             <img
               src="/assets/images/logo.svg"
               alt="SI CMS Logo"
-              className="h-8 w-auto mr-3"
+              className="h-8 w-auto"
             />
-            <h1 className="text-xl font-bold text-gray-900">SI CMS: Admin</h1>
           </div>
           <nav className="mt-5 flex-1 px-2 space-y-1">
             <Link
@@ -71,19 +70,6 @@ function AdminContent({ children }: { children: React.ReactNode }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Posts
-            </Link>
-            <Link
-              href="/admin/posts/new"
-              className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                pathname === '/admin/posts/new'
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <svg className="mr-3 flex-shrink-0 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Post
             </Link>
             {user?.role === 'ADMIN' && (
               <Link
@@ -128,9 +114,9 @@ function AdminContent({ children }: { children: React.ReactNode }) {
               </div>
               <div className="ml-3 flex-1">
                 <p className="text-sm font-medium text-gray-700">{user?.name}</p>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col">
                   <p className="text-xs text-gray-500">{user?.email}</p>
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
                     user?.role === 'ADMIN' 
                       ? 'bg-purple-100 text-purple-800' 
                       : 'bg-blue-100 text-blue-800'
