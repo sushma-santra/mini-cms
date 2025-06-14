@@ -47,7 +47,7 @@ export default function PostEditor({ initialData, onSave, isLoading }: PostEdito
         initialImages.push({
           id: `img-${index}`,
           url: img.url,
-          aspectRatio: img.aspectRatio
+          aspectRatio: img.aspectRatio || 'free'
         })
       })
     }

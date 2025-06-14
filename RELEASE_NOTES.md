@@ -1,4 +1,76 @@
-# Release Notes v1.0.0
+# Release Notes
+
+## Version 1.2.0 - Enhanced Multiple Image Upload
+
+### 🎯 New Features
+
+#### **Multi-Aspect Ratio Image Cropping**
+- **Enhanced Image Cropper**: Users can now crop the same image for multiple aspect ratios in a single session
+- **Visual Crop Indicators**: Green dots show which aspect ratios have been cropped
+- **Live Preview Panel**: Real-time preview of all cropped versions with thumbnails
+- **Batch Upload**: All cropped versions upload simultaneously with consistent naming
+
+#### **Organized Directory Structure**
+- **Aspect Ratio Folders**: Images automatically organized by aspect ratio
+  ```
+  /uploads/images/
+  ├── 1-1/          # Square (1:1)
+  ├── 16-9/         # Landscape (16:9)  
+  ├── 9-16/         # Portrait (9:16)
+  ├── 21-9/         # Wide (21:9)
+  ├── 4-3/          # Standard (4:3)
+  └── free/         # Free crop
+  ```
+- **Consistent Naming**: Same filename across all aspect ratios, only directory path changes
+- **Automatic Directory Creation**: Aspect ratio folders created automatically as needed
+
+#### **Enhanced User Experience**
+- **Grouped Image Display**: Images grouped by base filename showing version counts
+- **Image Set Management**: Manage multiple versions of the same image as a set
+- **Individual Version Control**: Remove specific versions or entire image sets
+- **Progress Indicators**: Clear upload status and processing feedback
+- **Version Counter**: Shows "Image Set 1 (3 versions)" for better organization
+
+### 🔧 Technical Improvements
+
+#### **New API Endpoints**
+- **`/api/upload/multiple`**: Handles batch uploads for multiple aspect ratios
+- **Atomic Operations**: All versions upload together or fail together
+- **Enhanced Validation**: Maintains security with type and size checks
+
+#### **Utility Functions**
+- **`src/lib/image-utils.ts`**: Centralized aspect ratio management
+- **Modular Architecture**: Clean separation of concerns for image processing
+- **Extensible Design**: Easy to add new aspect ratios in the future
+
+#### **Component Enhancements**
+- **ImageCropper**: Multi-crop interface with preview panel
+- **MultipleImageUploader**: Grouped image display with version management
+- **PostEditor**: Updated to handle new image structure
+
+### 🎮 User Workflow
+1. **Select Image** → Click "Add Image" and select file
+2. **Multi-Crop Interface** → Enhanced modal with cropper and preview
+3. **Add Multiple Crops** → Select different ratios and crop each
+4. **Preview Versions** → See all cropped versions with thumbnails
+5. **Upload All** → Single click uploads all versions
+6. **Grouped Display** → Organized view with version counts
+
+### 🚀 Benefits
+- **Professional Workflow**: Crop once, get multiple optimized versions
+- **Consistent Organization**: Clean directory structure by aspect ratio
+- **Efficient Management**: Visual grouping and version control
+- **Future-Proof**: Extensible architecture for new aspect ratios
+- **Same UI Flow**: Enhanced existing interface without breaking changes
+
+### 📊 Performance Improvements
+- **Batch Processing**: Multiple uploads processed efficiently
+- **Reduced Server Calls**: Single API call for multiple versions
+- **Optimized Storage**: Organized directory structure
+
+---
+
+## Version 1.0.0 - Initial Release
 
 ## Features
 
