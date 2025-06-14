@@ -1,4 +1,4 @@
-# Simple CMS - Blog Management System
+# Mini CMS - Blog Management System
 
 A simple and efficient Content Management System (CMS) built with Next.js, React, and PostgreSQL. This CMS focuses on essential blog post management with CRUD operations, WYSIWYG editing, image uploads, and SEO optimization.
 
