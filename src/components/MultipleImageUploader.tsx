@@ -208,9 +208,9 @@ export default function MultipleImageUploader({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       )}
-                      <h4 className="text-sm font-medium text-gray-900">
+                <h4 className="text-sm font-medium text-gray-900">
                         Image Set {groupIndex + 1} ({imageGroup.length} version{imageGroup.length !== 1 ? 's' : ''})
-                      </h4>
+                </h4>
                       {hasMultipleVersions && (
                         <span className="text-xs text-gray-500">
                           {isExpanded ? 'Click to collapse' : 'Click to expand'}
@@ -237,60 +237,60 @@ export default function MultipleImageUploader({
                           )}
                         </div>
                       )}
-                      <button
-                        type="button"
+                <button
+                  type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          // Remove all images in this group
-                          const idsToRemove = imageGroup.map(img => img.id)
-                          onImagesChange(images.filter(img => !idsToRemove.includes(img.id)))
-                        }}
+                    // Remove all images in this group
+                    const idsToRemove = imageGroup.map(img => img.id)
+                    onImagesChange(images.filter(img => !idsToRemove.includes(img.id)))
+                  }}
                         className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50"
-                      >
+                >
                         Remove all
-                      </button>
+                </button>
                     </div>
                   </div>
-                </div>
-                
+              </div>
+              
                 {/* Set Content - Collapsible */}
                 {isExpanded && (
                   <div className="p-4">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                      {imageGroup.map((image, index) => (
-                        <div key={image.id} className="relative group">
-                          <div className="aspect-square bg-white rounded-lg overflow-hidden border border-gray-200">
-                            <img
-                              src={image.url}
-                              alt={`${getAspectRatioLabel(image.aspectRatio)} version`}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          
-                          {/* Image overlay with controls */}
-                          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => removeImage(image.id)}
-                              className="p-1 bg-red-500 bg-opacity-70 rounded-full text-white hover:bg-opacity-90"
-                              title="Remove this version"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                          
-                          {/* Aspect ratio label */}
-                          <div className="absolute bottom-1 left-1 right-1">
-                            <span className="inline-block w-full px-2 py-1 text-xs font-medium text-white bg-black bg-opacity-70 rounded text-center truncate">
-                              {getAspectRatioLabel(image.aspectRatio)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {imageGroup.map((image, index) => (
+                  <div key={image.id} className="relative group">
+                    <div className="aspect-square bg-white rounded-lg overflow-hidden border border-gray-200">
+                      <img
+                        src={image.url}
+                        alt={`${getAspectRatioLabel(image.aspectRatio)} version`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
+                    {/* Image overlay with controls */}
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => removeImage(image.id)}
+                        className="p-1 bg-red-500 bg-opacity-70 rounded-full text-white hover:bg-opacity-90"
+                        title="Remove this version"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    {/* Aspect ratio label */}
+                    <div className="absolute bottom-1 left-1 right-1">
+                      <span className="inline-block w-full px-2 py-1 text-xs font-medium text-white bg-black bg-opacity-70 rounded text-center truncate">
+                        {getAspectRatioLabel(image.aspectRatio)}
+                      </span>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
                 )}
               </div>
             )
