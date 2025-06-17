@@ -12,10 +12,12 @@ const updatePostSchema = z.object({
   featuredImage: z.string().optional(),
   images: z.array(z.object({
     url: z.string(),
-    aspectRatio: z.string()
+    aspectRatio: z.string(),
+    baseFilename: z.string().optional()
   })).optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
-  tags: z.array(z.string()).optional(),
+  categoryId: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
 })
 
 // GET /api/posts/[id] - Get single post
@@ -29,6 +31,9 @@ export async function GET(
       include: {
         author: {
           select: { id: true, name: true, email: true },
+        },
+        category: {
+          select: { id: true, name: true },
         },
         tags: true,
       },
@@ -83,6 +88,7 @@ export async function PUT(
 
     // Prepare update data
     const updateData: any = { ...data }
+    delete updateData.tagIds // Remove tagIds from direct update data
     
     // Handle images field properly
     if (data.images !== undefined) {
@@ -120,10 +126,20 @@ export async function PUT(
 
     const post = await prisma.post.update({
       where: { id: params.id },
-      data: updateData,
+      data: {
+        ...updateData,
+        ...(data.tagIds !== undefined && {
+          tags: {
+            set: data.tagIds.map(id => ({ id }))
+          }
+        })
+      },
       include: {
         author: {
           select: { id: true, name: true, email: true },
+        },
+        category: {
+          select: { id: true, name: true },
         },
         tags: true,
       },

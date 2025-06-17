@@ -1,4 +1,4 @@
-// File: /home/sushma/Documents/DraftMode/src/app/api/dashboard/route.ts
+// File: /home/dhruv/MiniCMS/mini-cms/src/app/api/dashboard/route.ts
 import * as entry from '../../../../../src/app/api/dashboard/route.js'
 import type { NextRequest } from 'next/server.js'
 

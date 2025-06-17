@@ -13,11 +13,12 @@ const createPostSchema = z.object({
   featuredImage: z.string().optional(),
   images: z.array(z.object({
     url: z.string(),
-    aspectRatio: z.string()
+    aspectRatio: z.string(),
+    baseFilename: z.string().optional()
   })).optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
   categoryId: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  tagIds: z.array(z.string()).optional(),
 })
 
 const updatePostSchema = createPostSchema.partial()
@@ -133,7 +134,14 @@ export async function POST(request: NextRequest) {
     console.log('Final postData:', JSON.stringify(postData, null, 2))
 
     const post = await prisma.post.create({
-      data: postData,
+      data: {
+        ...postData,
+        ...(data.tagIds && data.tagIds.length > 0 && {
+          tags: {
+            connect: data.tagIds.map(id => ({ id }))
+          }
+        })
+      },
       include: {
         author: {
           select: { id: true, name: true, email: true },
