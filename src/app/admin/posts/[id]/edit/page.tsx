@@ -70,6 +70,10 @@ export default function EditPostPage() {
     }
   }
 
+  const handleCancel = () => {
+    router.push('/admin/posts')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -108,6 +112,7 @@ export default function EditPostPage() {
       <PostEditor 
         initialData={post} 
         onSave={handleSave} 
+        onCancel={handleCancel}
         isLoading={isLoading} 
       />
     </div>
