@@ -15,13 +15,23 @@ export async function GET(request: NextRequest) {
     const tags = await prisma.tag.findMany({
       include: {
         _count: {
-          select: { posts: true }
+          select: { 
+            posts: {
+              where: { status: 'PUBLISHED' }  // Only count published posts
+            }
+          }
         }
       },
       orderBy: { name: 'asc' },
     })
 
-    return NextResponse.json({ tags })
+    // Transform the data to match what the frontend expects
+    const transformedTags = tags.map(tag => ({
+      ...tag,
+      posts: Array(tag._count.posts).fill(null)  // Create an array with correct length
+    }))
+
+    return NextResponse.json({ tags: transformedTags })
   } catch (error) {
     console.error('Get tags error:', error)
     return NextResponse.json(

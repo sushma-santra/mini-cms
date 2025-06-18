@@ -7,14 +7,19 @@ import { Prisma } from '@prisma/client'
 
 const createPostSchema = z.object({
   title: z.string().min(1),
-  content: z.string().min(1),
+  fullText: z.string().min(1, "Content is required"),
+  caption: z.string().optional(),
+  description: z.string().optional(),
+  externalLinks: z.string().optional(),
   seoTitle: z.string().optional(),
   seoDescription: z.string().optional(),
-  featuredImage: z.string().optional(),
+  featuredImage: z.string().nullable().optional(),
   images: z.array(z.object({
     url: z.string(),
     aspectRatio: z.string(),
-    baseFilename: z.string().optional()
+    baseFilename: z.string().optional(),
+    originalUrl: z.string().optional(),
+    isExisting: z.boolean().optional()
   })).optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
   categoryId: z.string().optional(),
@@ -48,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
-        { content: { contains: search, mode: 'insensitive' } },
+        { fullText: { contains: search, mode: 'insensitive' } },
       ]
     }
 
@@ -94,10 +99,8 @@ export async function POST(request: NextRequest) {
   try {
     const user = requireAuth(request)
     const body = await request.json()
-    console.log('Raw request body:', JSON.stringify(body, null, 2))
     
     const data = createPostSchema.parse(body)
-    console.log('Parsed data:', JSON.stringify(data, null, 2))
 
     // Generate slug from title
     let slug = generateSlug(data.title)
@@ -109,13 +112,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate excerpt if not provided
-    const excerpt = generateExcerpt(data.content)
+    const excerpt = generateExcerpt(data.fullText)
 
     const postData: any = {
       title: data.title,
       slug,
-      content: data.content,
+      fullText: data.fullText,
       excerpt,
+      caption: data.caption,
+      description: data.description,
+      externalLinks: data.externalLinks,
       seoTitle: data.seoTitle,
       seoDescription: data.seoDescription,
       featuredImage: data.featuredImage,
@@ -125,13 +131,19 @@ export async function POST(request: NextRequest) {
       authorId: user.id,
     }
 
-    // Add images if provided
+    // Add images if provided - only include new images (not existing ones)
     if (data.images && data.images.length > 0) {
-      postData.images = data.images
-      console.log('Adding images to postData:', JSON.stringify(data.images, null, 2))
+      // Filter to only include new images that aren't marked as existing
+      const newImages = data.images.filter(img => !img.isExisting)
+      if (newImages.length > 0) {
+        postData.images = newImages.map(img => ({
+          url: img.url,
+          aspectRatio: img.aspectRatio,
+          baseFilename: img.baseFilename,
+          originalUrl: img.originalUrl
+        }))
+      }
     }
-
-    console.log('Final postData:', JSON.stringify(postData, null, 2))
 
     const post = await prisma.post.create({
       data: {

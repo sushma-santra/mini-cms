@@ -14,7 +14,7 @@ GET /api/content
 |-----------|------|-------------|---------|
 | `cat` | string | Category filter | `blogs`, `media`, `case-studies` |
 | `cat` | string | Multiple categories (comma-separated) | `blogs,media` |
-| `id` | string | Specific content ID | `content-uuid-123` |
+| `slug` | string | Specific content slug | `my-blog-post-title` |
 | `page` | number | Page number (default: 1) | `1`, `2`, `3` |
 | `limit` | number | Items per page (default: 20) | `5`, `10`, `20` |
 | `totalContent` | number | Total items for mixed feeds | `5`, `10` |
@@ -34,10 +34,11 @@ GET /api/content?cat=media&page=2&limit=5
 GET /api/content?cat=case-studies
 ```
 
-### 3. Get Specific Content
+### 3. Get Specific Content by Slug
 ```javascript
-GET /api/content?cat=blogs&id=content-uuid-123
-GET /api/content?cat=media&id=content-uuid-456
+GET /api/content?cat=blogs&slug=my-blog-post-title
+GET /api/content?cat=media&slug=my-media-item
+GET /api/content?cat=case-studies&slug=australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6
 ```
 
 ### 4. Mixed Category Feed
@@ -54,39 +55,43 @@ GET /api/content?cat=blogs,case-studies&totalContent=8
   "success": true,
   "data": [
     {
-      "id": "content-uuid-123",
-      "title": "Latest Blog Post",
-      "slug": "latest-blog-post",
-      "excerpt": "Brief description of the post...",
-      "content": "Full content here...",
-      "category": "blogs",
-      "publishedAt": "2024-01-20T10:00:00Z",
-      "featuredImage": "https://example.com/image.jpg",
+      "id": "cmc1qheaw0001af861yc8csy6",
+      "title": "Australia star smashes record-equalling 13 sixes in backs-to-wall MLC century from No.6",
+      "slug": "australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+      "excerpt": "&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum,...",
+      "fullText": "<p><span style=\"color: rgb(11, 117, 0);\">&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum, Washington skipper Maxwell elected to bat first against the LA Knight Riders...</span></p>",
+      "caption": "Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.",
+      "description": "<p>Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.</p>",
+      "externalLinks": "https://www.wisden.com/series/major-league-cricket-2025/cricket-news/australia-star-glenn-maxwell-smashes-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+      "category": "case-studies",
+      "publishedAt": "2025-06-18T09:12:26.020Z",
+      "featuredImage": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
       "images": [
         {
-          "url": "https://example.com/img1.jpg",
-          "aspectRatio": "16:9"
+          "url": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
+          "aspectRatio": "1-1",
+          "baseFilename": "1750237908193-vxovt03wuze.jpg"
         }
       ],
       "author": {
-        "name": "John Doe",
-        "avatar": "https://example.com/avatar.jpg"
+        "name": "Admin User",
+        "avatar": null
       },
-      "tags": ["sports", "news"],
-      "readTime": "5 min"
+      "tags": ["icc rankings"],
+      "readTime": "4 min"
     }
   ],
   "pagination": {
     "page": 1,
-    "limit": 20,
-    "total": 25,
+    "limit": 1,
+    "total": 2,
     "pages": 2,
     "hasNext": true,
     "hasPrev": false
   },
   "filters": {
-    "category": "blogs",
-    "totalRequested": 20
+    "category": "case-studies",
+    "totalRequested": 1
   }
 }
 ```
@@ -96,31 +101,37 @@ GET /api/content?cat=blogs,case-studies&totalContent=8
 {
   "success": true,
   "data": {
-    "id": "content-uuid-123",
-    "title": "Specific Content Title",
-    "slug": "specific-content-title",
-    "content": "Full detailed content...",
-    "category": "blogs",
-    "publishedAt": "2024-01-20T10:00:00Z",
-    "featuredImage": "https://example.com/image.jpg",
+    "id": "cmc1qheaw0001af861yc8csy6",
+    "title": "Australia star smashes record-equalling 13 sixes in backs-to-wall MLC century from No.6",
+    "slug": "australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+    "fullText": "<p><span style=\"color: rgb(11, 117, 0);\">&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum, Washington skipper Maxwell elected to bat first against the LA Knight Riders. Openers Mitchell Owen and Rachin Ravindra were dismissed in the first three overs...</span></p>",
+    "excerpt": "&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum,...",
+    "caption": "Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.",
+    "description": "<p>Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.</p>",
+    "externalLinks": "https://www.wisden.com/series/major-league-cricket-2025/cricket-news/australia-star-glenn-maxwell-smashes-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+    "category": "case-studies",
+    "publishedAt": "2025-06-18T09:12:26.020Z",
+    "featuredImage": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
     "images": [
       {
-        "url": "https://example.com/img1.jpg",
-        "aspectRatio": "16:9"
+        "url": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
+        "aspectRatio": "1-1",
+        "baseFilename": "1750237908193-vxovt03wuze.jpg"
       }
     ],
     "author": {
-      "name": "John Doe",
-      "bio": "Content creator",
-      "avatar": "https://example.com/avatar.jpg"
+      "name": "Admin User",
+      "bio": "admin@example.com",
+      "avatar": null
     },
-    "tags": ["sports", "news"],
-    "readTime": "5 min",
+    "tags": ["icc rankings"],
+    "readTime": "4 min",
     "relatedContent": [
       {
         "id": "related-1",
-        "title": "Related Post",
-        "category": "blogs"
+        "title": "Related Case Study",
+        "slug": "related-case-study",
+        "category": "case-studies"
       }
     ]
   }
@@ -155,9 +166,9 @@ const fetchContent = async (category, page = 1) => {
   return data
 }
 
-// Get specific content
-const fetchSingleContent = async (category, id) => {
-  const response = await fetch(`/api/content?cat=${category}&id=${id}`)
+// Get specific content by slug
+const fetchSingleContent = async (category, slug) => {
+  const response = await fetch(`/api/content?cat=${category}&slug=${slug}`)
   const data = await response.json()
   return data.data
 }
@@ -207,7 +218,7 @@ async function loadHomepageHighlights() {
 - Use `pagination.total` for showing total count
 - Default: 20 items per page
 
-### �� **Data Ordering**
+### 🔢 **Data Ordering**
 - Content is **always sorted by latest publishedAt first**
 - No need to handle sorting on frontend
 - Most recent content appears at top
@@ -261,8 +272,9 @@ async function safeApiCall(url) {
 | Blogs page | `/api/content?cat=blogs&page=1&limit=12` |
 | Media gallery | `/api/content?cat=media&page=1&limit=20` |
 | Case studies page | `/api/content?cat=case-studies&page=1&limit=10` |
-| Single blog post | `/api/content?cat=blogs&id=post-123` |
-| Single media item | `/api/content?cat=media&id=media-456` |
+| Single blog post | `/api/content?cat=blogs&slug=my-blog-post-slug` |
+| Single media item | `/api/content?cat=media&slug=my-media-slug` |
+| Single case study | `/api/content?cat=case-studies&slug=my-case-study-slug` |
 | All categories | `/api/content?cat=blogs,media,case-studies&page=1` |
 
 ## Parameter Combinations
@@ -275,8 +287,8 @@ async function safeApiCall(url) {
 // ✅ Category + pagination
 /api/content?cat=blogs&page=2&limit=15
 
-// ✅ Specific content
-/api/content?cat=blogs&id=content-123
+// ✅ Specific content by slug
+/api/content?cat=blogs&slug=my-blog-post-slug
 
 // ✅ Multiple categories
 /api/content?cat=blogs,media&totalContent=10
@@ -284,8 +296,8 @@ async function safeApiCall(url) {
 
 ### Invalid Combinations
 ```javascript
-// ❌ ID without category
-/api/content?id=content-123
+// ❌ Slug without category
+/api/content?slug=my-blog-post-slug
 
 // ❌ totalContent with single category (use limit instead)
 /api/content?cat=blogs&totalContent=5
@@ -302,15 +314,18 @@ async function safeApiCall(url) {
 | `id` | string | Unique content identifier | ✅ |
 | `title` | string | Content title | ✅ |
 | `slug` | string | URL-friendly identifier | ✅ |
-| `excerpt` | string | Brief description | ✅ |
-| `content` | string | Full content body | ✅ |
+| `excerpt` | string | Brief description (auto-generated from fullText) | ✅ |
+| `fullText` | string | Full content body (rich HTML from editor) | ✅ |
+| `caption` | string | Short caption for the content | ❌ |
+| `description` | string | Rich HTML description (from visual editor) | ❌ |
+| `externalLinks` | string | External reference links | ❌ |
 | `category` | string | Content category | ✅ |
-| `publishedAt` | string | Publication date (ISO) | ✅ |
+| `publishedAt` | string | Publication date (ISO format) | ✅ |
 | `featuredImage` | string | Main image URL | ❌ |
-| `images` | array | Additional images | ❌ |
+| `images` | array | Additional images with aspect ratios | ❌ |
 | `author` | object | Author information | ✅ |
 | `tags` | array | Content tags | ❌ |
-| `readTime` | string | Estimated read time | ❌ |
+| `readTime` | string | Estimated read time | ✅ |
 | `relatedContent` | array | Related content (single content only) | ❌ |
 
 ### Pagination Object Fields

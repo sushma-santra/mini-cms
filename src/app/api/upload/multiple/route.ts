@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
     const aspectRatios = formData.getAll('aspectRatios') as string[]
+    const originalFile = formData.get('originalFile') as File | null  // New: original image
     const baseFilename = formData.get('baseFilename') as string || generateBaseFilename()
     
     if (!files || files.length === 0) {
@@ -47,9 +48,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const uploadResults = []
+    // Also validate original file if provided
+    if (originalFile) {
+      if (!allowedTypes.includes(originalFile.type)) {
+        return NextResponse.json(
+          { error: 'Invalid original file type. Only images are allowed.' },
+          { status: 400 }
+        )
+      }
 
-    // Process each file
+      if (originalFile.size > maxSize) {
+        return NextResponse.json(
+          { error: 'Original file too large. Maximum size is 5MB.' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const uploadResults = []
+    let originalUrl = null
+
+    // Save original file if provided (for future re-cropping)
+    if (originalFile) {
+      const originalDir = path.join(process.cwd(), 'public', 'uploads', 'images', 'originals')
+      
+      // Create directory if it doesn't exist
+      const fs = require('fs')
+      if (!fs.existsSync(originalDir)) {
+        fs.mkdirSync(originalDir, { recursive: true })
+      }
+
+      // Convert original file to buffer and save
+      const originalBytes = await originalFile.arrayBuffer()
+      const originalBuffer = Buffer.from(originalBytes)
+      const originalFilePath = path.join(originalDir, baseFilename)
+      await writeFile(originalFilePath, originalBuffer)
+      
+      originalUrl = `/uploads/images/originals/${baseFilename}`
+    }
+
+    // Process each cropped file
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       const aspectRatio = aspectRatios[i]
@@ -88,6 +126,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       uploads: uploadResults,
+      originalUrl: originalUrl,  // New: return original image URL
       baseFilename: baseFilename,
       totalFiles: files.length,
     })

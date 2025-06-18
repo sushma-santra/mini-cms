@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     
     // Extract parameters
     const cat = searchParams.get('cat') // Category or comma-separated categories
-    const id = searchParams.get('id') // Specific content ID
+    const slug = searchParams.get('slug')  // Changed from 'id' to 'slug'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const totalContent = searchParams.get('totalContent') ? parseInt(searchParams.get('totalContent')!) : null
@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Handle specific content request
-    if (id) {
+    // Handle specific content request by slug
+    if (slug) {
       if (!cat) {
         return NextResponse.json({
           success: false,
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
       const content = await prisma.post.findFirst({
         where: {
-          id,
+          slug,  // Changed from 'id' to 'slug'
           status: 'PUBLISHED',
           category: {
             name: {
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       // Get related content (same category, excluding current)
       const relatedContent = await prisma.post.findMany({
         where: {
-          id: { not: id },
+          slug: { not: slug },  // Changed from 'id' to 'slug'
           status: 'PUBLISHED',
           categoryId: content.categoryId
         },
@@ -98,12 +98,16 @@ export async function GET(request: NextRequest) {
       })
 
       // Format single content response
+      const contentWithNewFields = content as any  // Type assertion for new fields
       const formattedContent = {
         id: content.id,
         title: content.title,
         slug: content.slug,
-        content: content.content,
+        fullText: (content as any).fullText,  // Use fullText field from database
         excerpt: content.excerpt,
+        caption: contentWithNewFields.caption || null,  // New field
+        description: contentWithNewFields.description || null,  // New field
+        externalLinks: contentWithNewFields.externalLinks || null,  // New field
         category: content.category?.name || 'uncategorized',
         publishedAt: content.publishedAt?.toISOString(),
         featuredImage: content.featuredImage,
@@ -114,7 +118,7 @@ export async function GET(request: NextRequest) {
           avatar: null // Add avatar field to user model if needed
         },
         tags: content.tags.map(tag => tag.name),
-        readTime: calculateReadTime(content.content),
+        readTime: calculateReadTime((content as any).fullText),  // Use fullText field
         relatedContent: relatedContent.map(related => ({
           id: related.id,
           title: related.title,
@@ -251,12 +255,16 @@ export async function GET(request: NextRequest) {
 
 // Helper function to format content for list responses
 function formatContentForList(content: any) {
+  const contentWithNewFields = content as any  // Type assertion for new fields
   return {
     id: content.id,
     title: content.title,
     slug: content.slug,
     excerpt: content.excerpt,
-    content: content.content,
+    fullText: (content as any).fullText,  // Use fullText field from database
+    caption: contentWithNewFields.caption || null,  // New field
+    description: contentWithNewFields.description || null,  // New field
+    externalLinks: contentWithNewFields.externalLinks || null,  // New field
     category: content.category?.name || 'uncategorized',
     publishedAt: content.publishedAt?.toISOString(),
     featuredImage: content.featuredImage,
@@ -266,14 +274,18 @@ function formatContentForList(content: any) {
       avatar: null // Add avatar field to user model if needed
     },
     tags: content.tags.map((tag: any) => tag.name),
-    readTime: calculateReadTime(content.content)
+    readTime: calculateReadTime((content as any).fullText)  // Use fullText field
   }
 }
 
 // Helper function to calculate read time
-function calculateReadTime(content: string): string {
+function calculateReadTime(content: string | null | undefined): string {
+  if (!content || typeof content !== 'string') {
+    return '1 min'  // Default for empty content
+  }
+  
   const wordsPerMinute = 200
-  const wordCount = content.split(/\s+/).length
-  const minutes = Math.ceil(wordCount / wordsPerMinute)
+  const wordCount = content.split(/\s+/).filter(word => word.length > 0).length
+  const minutes = Math.max(1, Math.ceil(wordCount / wordsPerMinute))
   return `${minutes} min`
 } 
