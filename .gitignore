@@ -4,6 +4,7 @@
 .pnp.js
 package-lock.json
 yarn.lock
+dump.sql
 
 # testing
 /coverage
