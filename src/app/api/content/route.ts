@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const totalContent = searchParams.get('totalContent') ? parseInt(searchParams.get('totalContent')!) : null
+    const relatedContent = searchParams.get('relatedcontent') === 'true'  // Changed from featuredcontent
 
     // Validate parameters
     if (page < 1) {
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get related content (same category, excluding current)
-      const relatedContent = await prisma.post.findMany({
+      const moreContent = await prisma.post.findMany({
         where: {
           slug: { not: slug },  // Changed from 'id' to 'slug'
           status: 'PUBLISHED',
@@ -96,6 +97,50 @@ export async function GET(request: NextRequest) {
         orderBy: { publishedAt: 'desc' },
         take: 3
       })
+
+      // Get related content if requested
+      let relatedContentData = null
+      if (relatedContent) {
+        // Get the current post's tag names for matching
+        const currentPostTagNames = content.tags.map(tag => tag.name)
+        
+        if (currentPostTagNames.length > 0) {
+          relatedContentData = await prisma.post.findMany({
+            where: {
+              slug: { not: slug },  // Exclude current post
+              status: 'PUBLISHED',
+              categoryId: content.categoryId,  // Same category only
+              tags: {
+                some: {
+                  name: {
+                    in: currentPostTagNames  // Posts that have any of the same tags as current post
+                  }
+                }
+              }
+            },
+            include: {
+              author: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              },
+              category: {
+                select: {
+                  name: true
+                }
+              },
+              tags: {
+                select: {
+                  name: true
+                }
+              }
+            },
+            orderBy: { publishedAt: 'desc' },  // Most recent first
+            take: limit
+          })
+        }
+      }
 
       // Format single content response
       const contentWithNewFields = content as any  // Type assertion for new fields
@@ -119,12 +164,13 @@ export async function GET(request: NextRequest) {
         },
         tags: content.tags.map(tag => tag.name),
         readTime: calculateReadTime((content as any).fullText),  // Use fullText field
-        relatedContent: relatedContent.map(related => ({
+        taggedContent: moreContent.map(related => ({
           id: related.id,
           title: related.title,
           slug: related.slug,
           category: related.category?.name || 'uncategorized'
-        }))
+        })),
+        ...(relatedContent && { relatedContent: relatedContentData?.map(formatContentForList) || [] })  // Add related content if requested
       }
 
       return NextResponse.json({

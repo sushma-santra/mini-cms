@@ -18,6 +18,7 @@ GET /api/content
 | `page` | number | Page number (default: 1) | `1`, `2`, `3` |
 | `limit` | number | Items per page (default: 20) | `5`, `10`, `20` |
 | `totalContent` | number | Total items for mixed feeds | `5`, `10` |
+| `relatedcontent` | boolean | Include related content based on shared tags | `true`, `false` |
 
 ## Use Cases & Examples
 
@@ -41,7 +42,14 @@ GET /api/content?cat=media&slug=my-media-item
 GET /api/content?cat=case-studies&slug=australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6
 ```
 
-### 4. Mixed Category Feed
+### 4. Get Content with Related Content (Tag-based)
+```javascript
+GET /api/content?cat=blogs&slug=my-blog-post-title&relatedcontent=true
+GET /api/content?cat=blogs&slug=my-blog-post-title&relatedcontent=true&limit=5
+GET /api/content?cat=case-studies&slug=my-case-study&relatedcontent=true&limit=3
+```
+
+### 5. Mixed Category Feed
 ```javascript
 GET /api/content?cat=blogs,media&totalContent=5
 GET /api/content?cat=blogs,case-studies&totalContent=8
@@ -126,12 +134,34 @@ GET /api/content?cat=blogs,case-studies&totalContent=8
     },
     "tags": ["icc rankings"],
     "readTime": "4 min",
+    "taggedContent": [
+      {
+        "id": "tagged-1",
+        "title": "Recent Post in Same Category",
+        "slug": "recent-post-slug",
+        "category": "case-studies"
+      }
+    ],
     "relatedContent": [
       {
         "id": "related-1",
-        "title": "Related Case Study",
-        "slug": "related-case-study",
-        "category": "case-studies"
+        "title": "Post with Shared Tags",
+        "slug": "post-with-shared-tags",
+        "fullText": "<p>Content with similar tags...</p>",
+        "excerpt": "Brief excerpt...",
+        "caption": "Caption for related content",
+        "description": "<p>Description of related content</p>",
+        "externalLinks": "https://example.com",
+        "category": "case-studies",
+        "publishedAt": "2025-06-17T09:12:26.020Z",
+        "featuredImage": "/uploads/images/related.jpg",
+        "images": [],
+        "author": {
+          "name": "Admin User",
+          "avatar": null
+        },
+        "tags": ["icc rankings", "cricket"],
+        "readTime": "3 min"
       }
     ]
   }
@@ -173,6 +203,13 @@ const fetchSingleContent = async (category, slug) => {
   return data.data
 }
 
+// Get content with related posts based on shared tags
+const fetchContentWithRelated = async (category, slug, limit = 5) => {
+  const response = await fetch(`/api/content?cat=${category}&slug=${slug}&relatedcontent=true&limit=${limit}`)
+  const data = await response.json()
+  return data.data
+}
+
 // Mixed feed for homepage
 const fetchHighlights = async () => {
   const response = await fetch('/api/content?cat=blogs,media,case-studies&totalContent=6')
@@ -198,6 +235,22 @@ async function loadBlogsPage(pageNumber = 1) {
   }
 }
 
+// Blog post detail page with related content
+async function loadBlogPostWithRelated(slug) {
+  try {
+    const response = await fetch(`/api/content?cat=blogs&slug=${slug}&relatedcontent=true&limit=3`)
+    const result = await response.json()
+    
+    if (result.success) {
+      displayBlogPost(result.data)
+      displayTaggedContent(result.data.taggedContent) // Recent posts from same category
+      displayRelatedContent(result.data.relatedContent) // Posts with shared tags
+    }
+  } catch (error) {
+    console.error('Failed to load blog post:', error)
+  }
+}
+
 // Homepage highlights component
 async function loadHomepageHighlights() {
   const response = await fetch('/api/content?cat=blogs,media,case-studies&totalContent=6')
@@ -217,6 +270,12 @@ async function loadHomepageHighlights() {
 - Always check `pagination.hasNext` for infinite scroll
 - Use `pagination.total` for showing total count
 - Default: 20 items per page
+
+### 🔗 **Related Content Feature**
+- **`taggedContent`**: Always present in single content responses - recent posts from same category
+- **`relatedContent`**: Only present when `relatedcontent=true` - posts sharing tags with current post
+- Related content is filtered by same category and excludes the current post
+- Use `limit` parameter to control how many related items to return (default: based on API limit)
 
 ### 🔢 **Data Ordering**
 - Content is **always sorted by latest publishedAt first**
@@ -263,6 +322,7 @@ async function safeApiCall(url) {
 3. **Handle empty states** gracefully
 4. **Combine parameters** for complex queries
 5. **Use `totalContent`** for homepage highlights
+6. **Use `relatedcontent=true`** for showing tag-based related posts
 
 ## Quick Reference
 
@@ -273,8 +333,10 @@ async function safeApiCall(url) {
 | Media gallery | `/api/content?cat=media&page=1&limit=20` |
 | Case studies page | `/api/content?cat=case-studies&page=1&limit=10` |
 | Single blog post | `/api/content?cat=blogs&slug=my-blog-post-slug` |
+| Blog post with related | `/api/content?cat=blogs&slug=my-blog-post-slug&relatedcontent=true&limit=5` |
 | Single media item | `/api/content?cat=media&slug=my-media-slug` |
 | Single case study | `/api/content?cat=case-studies&slug=my-case-study-slug` |
+| Case study with related | `/api/content?cat=case-studies&slug=my-case-study-slug&relatedcontent=true&limit=3` |
 | All categories | `/api/content?cat=blogs,media,case-studies&page=1` |
 
 ## Parameter Combinations
@@ -290,6 +352,9 @@ async function safeApiCall(url) {
 // ✅ Specific content by slug
 /api/content?cat=blogs&slug=my-blog-post-slug
 
+// ✅ Specific content with related content
+/api/content?cat=blogs&slug=my-blog-post-slug&relatedcontent=true&limit=5
+
 // ✅ Multiple categories
 /api/content?cat=blogs,media&totalContent=10
 ```
@@ -304,6 +369,9 @@ async function safeApiCall(url) {
 
 // ❌ page with totalContent (totalContent ignores pagination)
 /api/content?cat=blogs,media&totalContent=5&page=2
+
+// ❌ relatedcontent without slug (related content only works for single content)
+/api/content?cat=blogs&relatedcontent=true
 ```
 
 ## Response Data Fields
@@ -326,7 +394,8 @@ async function safeApiCall(url) {
 | `author` | object | Author information | ✅ |
 | `tags` | array | Content tags | ❌ |
 | `readTime` | string | Estimated read time | ✅ |
-| `relatedContent` | array | Related content (single content only) | ❌ |
+| `taggedContent` | array | Recent content from same category (single content only) | ✅ (single) |
+| `relatedContent` | array | Tag-based related content (single content only, when requested) | ❌ |
 
 ### Pagination Object Fields
 | Field | Type | Description |
@@ -337,5 +406,11 @@ async function safeApiCall(url) {
 | `pages` | number | Total pages available |
 | `hasNext` | boolean | Has next page |
 | `hasPrev` | boolean | Has previous page |
+
+### Related Content Logic
+- **`taggedContent`**: Recent posts from the same category (always included in single content responses)
+- **`relatedContent`**: Posts that share at least one tag with the current post (only when `relatedcontent=true`)
+- Both exclude the current post from results
+- Results are ordered by `publishedAt` (most recent first)
 
 This documentation provides everything your frontend team needs to start consuming the public content API! 🚀 
