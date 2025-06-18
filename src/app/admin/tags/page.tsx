@@ -10,6 +10,7 @@ export default function TagsPage() {
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [formData, setFormData] = useState({ name: '', description: '' })
   const { token, user } = useAuth()
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (token) {
@@ -29,7 +30,7 @@ export default function TagsPage() {
     }
   }
 
-  const handleEdit = (tag: { id: string; name: string; description?: string }) => {
+  const handleEditTag = (tag: { id: string; name: string; description?: string }) => {
     setFormData({
       name: tag.name,
       description: tag.description || ''
@@ -95,6 +96,28 @@ export default function TagsPage() {
     setFormData({ name: '', description: '' })
     setEditingTagId(null)
     setShowCreateForm(false)
+  }
+
+  const handleDeleteTag = async (tagId: string) => {
+    if (!confirm('Are you sure you want to delete this tag?')) return
+
+    try {
+      const response = await fetch(`/api/tags/${tagId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete tag')
+      }
+
+      setTags(tags.filter(tag => tag.id !== tagId))
+    } catch (err: any) {
+      setError(err.message)
+    }
   }
 
   if (loading) {
@@ -237,7 +260,7 @@ export default function TagsPage() {
                   </div>
                   <div className="ml-4 flex items-center space-x-3">
                     <button
-                      onClick={() => handleEdit(tag)}
+                      onClick={() => handleEditTag(tag)}
                       className="text-gray-400 hover:text-gray-600 transition-colors"
                       title="Edit tag"
                     >
@@ -246,7 +269,7 @@ export default function TagsPage() {
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleDelete(tag.id)}
+                      onClick={() => handleDeleteTag(tag.id)}
                       className="text-gray-400 hover:text-red-600 transition-colors"
                       title="Delete tag"
                     >

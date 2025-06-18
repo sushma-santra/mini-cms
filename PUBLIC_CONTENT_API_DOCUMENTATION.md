@@ -14,10 +14,11 @@ GET /api/content
 |-----------|------|-------------|---------|
 | `cat` | string | Category filter | `blogs`, `media`, `case-studies` |
 | `cat` | string | Multiple categories (comma-separated) | `blogs,media` |
-| `id` | string | Specific content ID | `content-uuid-123` |
+| `slug` | string | Specific content slug | `my-blog-post-title` |
 | `page` | number | Page number (default: 1) | `1`, `2`, `3` |
 | `limit` | number | Items per page (default: 20) | `5`, `10`, `20` |
 | `totalContent` | number | Total items for mixed feeds | `5`, `10` |
+| `relatedcontent` | boolean | Include related content based on shared tags | `true`, `false` |
 
 ## Use Cases & Examples
 
@@ -34,13 +35,21 @@ GET /api/content?cat=media&page=2&limit=5
 GET /api/content?cat=case-studies
 ```
 
-### 3. Get Specific Content
+### 3. Get Specific Content by Slug
 ```javascript
-GET /api/content?cat=blogs&id=content-uuid-123
-GET /api/content?cat=media&id=content-uuid-456
+GET /api/content?cat=blogs&slug=my-blog-post-title
+GET /api/content?cat=media&slug=my-media-item
+GET /api/content?cat=case-studies&slug=australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6
 ```
 
-### 4. Mixed Category Feed
+### 4. Get Content with Related Content (Tag-based)
+```javascript
+GET /api/content?cat=blogs&slug=my-blog-post-title&relatedcontent=true
+GET /api/content?cat=blogs&slug=my-blog-post-title&relatedcontent=true&limit=5
+GET /api/content?cat=case-studies&slug=my-case-study&relatedcontent=true&limit=3
+```
+
+### 5. Mixed Category Feed
 ```javascript
 GET /api/content?cat=blogs,media&totalContent=5
 GET /api/content?cat=blogs,case-studies&totalContent=8
@@ -54,39 +63,43 @@ GET /api/content?cat=blogs,case-studies&totalContent=8
   "success": true,
   "data": [
     {
-      "id": "content-uuid-123",
-      "title": "Latest Blog Post",
-      "slug": "latest-blog-post",
-      "excerpt": "Brief description of the post...",
-      "content": "Full content here...",
-      "category": "blogs",
-      "publishedAt": "2024-01-20T10:00:00Z",
-      "featuredImage": "https://example.com/image.jpg",
+      "id": "cmc1qheaw0001af861yc8csy6",
+      "title": "Australia star smashes record-equalling 13 sixes in backs-to-wall MLC century from No.6",
+      "slug": "australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+      "excerpt": "&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum,...",
+      "fullText": "<p><span style=\"color: rgb(11, 117, 0);\">&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum, Washington skipper Maxwell elected to bat first against the LA Knight Riders...</span></p>",
+      "caption": "Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.",
+      "description": "<p>Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.</p>",
+      "externalLinks": "https://www.wisden.com/series/major-league-cricket-2025/cricket-news/australia-star-glenn-maxwell-smashes-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+      "category": "case-studies",
+      "publishedAt": "2025-06-18T09:12:26.020Z",
+      "featuredImage": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
       "images": [
         {
-          "url": "https://example.com/img1.jpg",
-          "aspectRatio": "16:9"
+          "url": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
+          "aspectRatio": "1-1",
+          "baseFilename": "1750237908193-vxovt03wuze.jpg"
         }
       ],
       "author": {
-        "name": "John Doe",
-        "avatar": "https://example.com/avatar.jpg"
+        "name": "Admin User",
+        "avatar": null
       },
-      "tags": ["sports", "news"],
-      "readTime": "5 min"
+      "tags": ["icc rankings"],
+      "readTime": "4 min"
     }
   ],
   "pagination": {
     "page": 1,
-    "limit": 20,
-    "total": 25,
+    "limit": 1,
+    "total": 2,
     "pages": 2,
     "hasNext": true,
     "hasPrev": false
   },
   "filters": {
-    "category": "blogs",
-    "totalRequested": 20
+    "category": "case-studies",
+    "totalRequested": 1
   }
 }
 ```
@@ -96,31 +109,59 @@ GET /api/content?cat=blogs,case-studies&totalContent=8
 {
   "success": true,
   "data": {
-    "id": "content-uuid-123",
-    "title": "Specific Content Title",
-    "slug": "specific-content-title",
-    "content": "Full detailed content...",
-    "category": "blogs",
-    "publishedAt": "2024-01-20T10:00:00Z",
-    "featuredImage": "https://example.com/image.jpg",
+    "id": "cmc1qheaw0001af861yc8csy6",
+    "title": "Australia star smashes record-equalling 13 sixes in backs-to-wall MLC century from No.6",
+    "slug": "australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+    "fullText": "<p><span style=\"color: rgb(11, 117, 0);\">&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum, Washington skipper Maxwell elected to bat first against the LA Knight Riders. Openers Mitchell Owen and Rachin Ravindra were dismissed in the first three overs...</span></p>",
+    "excerpt": "&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum,...",
+    "caption": "Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.",
+    "description": "<p>Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.</p>",
+    "externalLinks": "https://www.wisden.com/series/major-league-cricket-2025/cricket-news/australia-star-glenn-maxwell-smashes-13-sixes-in-backs-to-wall-mlc-century-from-no6",
+    "category": "case-studies",
+    "publishedAt": "2025-06-18T09:12:26.020Z",
+    "featuredImage": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
     "images": [
       {
-        "url": "https://example.com/img1.jpg",
-        "aspectRatio": "16:9"
+        "url": "/uploads/images/1-1/1750237908193-vxovt03wuze.jpg",
+        "aspectRatio": "1-1",
+        "baseFilename": "1750237908193-vxovt03wuze.jpg"
       }
     ],
     "author": {
-      "name": "John Doe",
-      "bio": "Content creator",
-      "avatar": "https://example.com/avatar.jpg"
+      "name": "Admin User",
+      "bio": "admin@example.com",
+      "avatar": null
     },
-    "tags": ["sports", "news"],
-    "readTime": "5 min",
+    "tags": ["icc rankings"],
+    "readTime": "4 min",
+    "taggedContent": [
+      {
+        "id": "tagged-1",
+        "title": "Recent Post in Same Category",
+        "slug": "recent-post-slug",
+        "category": "case-studies"
+      }
+    ],
     "relatedContent": [
       {
         "id": "related-1",
-        "title": "Related Post",
-        "category": "blogs"
+        "title": "Post with Shared Tags",
+        "slug": "post-with-shared-tags",
+        "fullText": "<p>Content with similar tags...</p>",
+        "excerpt": "Brief excerpt...",
+        "caption": "Caption for related content",
+        "description": "<p>Description of related content</p>",
+        "externalLinks": "https://example.com",
+        "category": "case-studies",
+        "publishedAt": "2025-06-17T09:12:26.020Z",
+        "featuredImage": "/uploads/images/related.jpg",
+        "images": [],
+        "author": {
+          "name": "Admin User",
+          "avatar": null
+        },
+        "tags": ["icc rankings", "cricket"],
+        "readTime": "3 min"
       }
     ]
   }
@@ -155,9 +196,16 @@ const fetchContent = async (category, page = 1) => {
   return data
 }
 
-// Get specific content
-const fetchSingleContent = async (category, id) => {
-  const response = await fetch(`/api/content?cat=${category}&id=${id}`)
+// Get specific content by slug
+const fetchSingleContent = async (category, slug) => {
+  const response = await fetch(`/api/content?cat=${category}&slug=${slug}`)
+  const data = await response.json()
+  return data.data
+}
+
+// Get content with related posts based on shared tags
+const fetchContentWithRelated = async (category, slug, limit = 5) => {
+  const response = await fetch(`/api/content?cat=${category}&slug=${slug}&relatedcontent=true&limit=${limit}`)
   const data = await response.json()
   return data.data
 }
@@ -187,6 +235,22 @@ async function loadBlogsPage(pageNumber = 1) {
   }
 }
 
+// Blog post detail page with related content
+async function loadBlogPostWithRelated(slug) {
+  try {
+    const response = await fetch(`/api/content?cat=blogs&slug=${slug}&relatedcontent=true&limit=3`)
+    const result = await response.json()
+    
+    if (result.success) {
+      displayBlogPost(result.data)
+      displayTaggedContent(result.data.taggedContent) // Recent posts from same category
+      displayRelatedContent(result.data.relatedContent) // Posts with shared tags
+    }
+  } catch (error) {
+    console.error('Failed to load blog post:', error)
+  }
+}
+
 // Homepage highlights component
 async function loadHomepageHighlights() {
   const response = await fetch('/api/content?cat=blogs,media,case-studies&totalContent=6')
@@ -207,7 +271,13 @@ async function loadHomepageHighlights() {
 - Use `pagination.total` for showing total count
 - Default: 20 items per page
 
-### �� **Data Ordering**
+### 🔗 **Related Content Feature**
+- **`taggedContent`**: Always present in single content responses - recent posts from same category
+- **`relatedContent`**: Only present when `relatedcontent=true` - posts sharing tags with current post
+- Related content is filtered by same category and excludes the current post
+- Use `limit` parameter to control how many related items to return (default: based on API limit)
+
+### 🔢 **Data Ordering**
 - Content is **always sorted by latest publishedAt first**
 - No need to handle sorting on frontend
 - Most recent content appears at top
@@ -252,6 +322,7 @@ async function safeApiCall(url) {
 3. **Handle empty states** gracefully
 4. **Combine parameters** for complex queries
 5. **Use `totalContent`** for homepage highlights
+6. **Use `relatedcontent=true`** for showing tag-based related posts
 
 ## Quick Reference
 
@@ -261,8 +332,11 @@ async function safeApiCall(url) {
 | Blogs page | `/api/content?cat=blogs&page=1&limit=12` |
 | Media gallery | `/api/content?cat=media&page=1&limit=20` |
 | Case studies page | `/api/content?cat=case-studies&page=1&limit=10` |
-| Single blog post | `/api/content?cat=blogs&id=post-123` |
-| Single media item | `/api/content?cat=media&id=media-456` |
+| Single blog post | `/api/content?cat=blogs&slug=my-blog-post-slug` |
+| Blog post with related | `/api/content?cat=blogs&slug=my-blog-post-slug&relatedcontent=true&limit=5` |
+| Single media item | `/api/content?cat=media&slug=my-media-slug` |
+| Single case study | `/api/content?cat=case-studies&slug=my-case-study-slug` |
+| Case study with related | `/api/content?cat=case-studies&slug=my-case-study-slug&relatedcontent=true&limit=3` |
 | All categories | `/api/content?cat=blogs,media,case-studies&page=1` |
 
 ## Parameter Combinations
@@ -275,8 +349,11 @@ async function safeApiCall(url) {
 // ✅ Category + pagination
 /api/content?cat=blogs&page=2&limit=15
 
-// ✅ Specific content
-/api/content?cat=blogs&id=content-123
+// ✅ Specific content by slug
+/api/content?cat=blogs&slug=my-blog-post-slug
+
+// ✅ Specific content with related content
+/api/content?cat=blogs&slug=my-blog-post-slug&relatedcontent=true&limit=5
 
 // ✅ Multiple categories
 /api/content?cat=blogs,media&totalContent=10
@@ -284,14 +361,17 @@ async function safeApiCall(url) {
 
 ### Invalid Combinations
 ```javascript
-// ❌ ID without category
-/api/content?id=content-123
+// ❌ Slug without category
+/api/content?slug=my-blog-post-slug
 
 // ❌ totalContent with single category (use limit instead)
 /api/content?cat=blogs&totalContent=5
 
 // ❌ page with totalContent (totalContent ignores pagination)
 /api/content?cat=blogs,media&totalContent=5&page=2
+
+// ❌ relatedcontent without slug (related content only works for single content)
+/api/content?cat=blogs&relatedcontent=true
 ```
 
 ## Response Data Fields
@@ -302,16 +382,20 @@ async function safeApiCall(url) {
 | `id` | string | Unique content identifier | ✅ |
 | `title` | string | Content title | ✅ |
 | `slug` | string | URL-friendly identifier | ✅ |
-| `excerpt` | string | Brief description | ✅ |
-| `content` | string | Full content body | ✅ |
+| `excerpt` | string | Brief description (auto-generated from fullText) | ✅ |
+| `fullText` | string | Full content body (rich HTML from editor) | ✅ |
+| `caption` | string | Short caption for the content | ❌ |
+| `description` | string | Rich HTML description (from visual editor) | ❌ |
+| `externalLinks` | string | External reference links | ❌ |
 | `category` | string | Content category | ✅ |
-| `publishedAt` | string | Publication date (ISO) | ✅ |
+| `publishedAt` | string | Publication date (ISO format) | ✅ |
 | `featuredImage` | string | Main image URL | ❌ |
-| `images` | array | Additional images | ❌ |
+| `images` | array | Additional images with aspect ratios | ❌ |
 | `author` | object | Author information | ✅ |
 | `tags` | array | Content tags | ❌ |
-| `readTime` | string | Estimated read time | ❌ |
-| `relatedContent` | array | Related content (single content only) | ❌ |
+| `readTime` | string | Estimated read time | ✅ |
+| `taggedContent` | array | Recent content from same category (single content only) | ✅ (single) |
+| `relatedContent` | array | Tag-based related content (single content only, when requested) | ❌ |
 
 ### Pagination Object Fields
 | Field | Type | Description |
@@ -322,5 +406,11 @@ async function safeApiCall(url) {
 | `pages` | number | Total pages available |
 | `hasNext` | boolean | Has next page |
 | `hasPrev` | boolean | Has previous page |
+
+### Related Content Logic
+- **`taggedContent`**: Recent posts from the same category (always included in single content responses)
+- **`relatedContent`**: Posts that share at least one tag with the current post (only when `relatedcontent=true`)
+- Both exclude the current post from results
+- Results are ordered by `publishedAt` (most recent first)
 
 This documentation provides everything your frontend team needs to start consuming the public content API! 🚀 
