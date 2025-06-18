@@ -9,6 +9,7 @@ interface DashboardStats {
   publishedPosts: number
   draftPosts: number
   totalCategories: number
+  totalTags: number
   recentPosts: Array<{
     id: string
     title: string
@@ -29,6 +30,7 @@ export default function AdminDashboard() {
     publishedPosts: 0,
     draftPosts: 0,
     totalCategories: 0,
+    totalTags: 0,
     recentPosts: []
   })
   const [loading, setLoading] = useState(true)
@@ -55,6 +57,7 @@ export default function AdminDashboard() {
           publishedPosts: data.stats.publishedPosts,
           draftPosts: data.stats.draftPosts,
           totalCategories: data.stats.totalCategories || 0,
+          totalTags: data.stats.totalTags || 0,
           recentPosts: data.recentPosts,
         })
       }
@@ -184,6 +187,30 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {user?.role === 'ADMIN' && (
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Tags
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">{stats.totalTags}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}
@@ -219,6 +246,17 @@ export default function AdminDashboard() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
                   Manage Categories
+                </Link>
+              )}
+              {user?.role === 'ADMIN' && (
+                <Link
+                  href="/admin/tags"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 w-full justify-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  Manage Tags
                 </Link>
               )}
             </div>

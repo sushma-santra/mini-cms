@@ -32,12 +32,14 @@ export async function GET(request: NextRequest) {
 
     // Get admin-only statistics
     let totalCategories = 0
+    let totalTags = 0
     let totalUsers = 0
     let authorStats: any[] = []
     
     if (user.role === 'ADMIN') {
-      const [categories, users, authors] = await Promise.all([
+      const [categories, tags, users, authors] = await Promise.all([
         prisma.category.count(),
+        prisma.tag.count(),
         prisma.user.count(),
         prisma.user.findMany({
           select: {
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest) {
       ])
       
       totalCategories = categories
+      totalTags = tags
       totalUsers = users
       authorStats = authors
     }
@@ -70,6 +73,7 @@ export async function GET(request: NextRequest) {
         publishedPosts,
         draftPosts,
         totalCategories: user.role === 'ADMIN' ? totalCategories : null,
+        totalTags: user.role === 'ADMIN' ? totalTags : null,
         totalUsers: user.role === 'ADMIN' ? totalUsers : null,
       },
       recentPosts,

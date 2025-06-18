@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useAuth } from '@/lib/auth-context'
 import MultipleImageUploader, { UploadedImage } from './MultipleImageUploader'
+import TagSelector from './TagSelector'
 
 // Dynamically import ReactQuill to avoid SSR issues
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
@@ -37,7 +38,8 @@ export default function PostEditor({ initialData, onSave, isLoading }: PostEdito
       initialImages.push({
         id: 'featured-img',
         url: initialData.featuredImage,
-        aspectRatio: 'free'
+        aspectRatio: 'free',
+        baseFilename: initialData.featuredImageBaseFilename || undefined
       })
     }
     
@@ -47,7 +49,8 @@ export default function PostEditor({ initialData, onSave, isLoading }: PostEdito
         initialImages.push({
           id: `img-${index}`,
           url: img.url,
-          aspectRatio: img.aspectRatio || 'free'
+          aspectRatio: img.aspectRatio || 'free',
+          baseFilename: img.baseFilename || undefined
         })
       })
     }
@@ -56,6 +59,9 @@ export default function PostEditor({ initialData, onSave, isLoading }: PostEdito
   })
   const [categoryId, setCategoryId] = useState(initialData?.categoryId || '')
   const [categories, setCategories] = useState([])
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    initialData?.tags ? initialData.tags.map((tag: any) => tag.id) : []
+  )
   const [editorMode, setEditorMode] = useState<'visual' | 'html'>('visual')
   const { token } = useAuth()
 
@@ -155,9 +161,11 @@ export default function PostEditor({ initialData, onSave, isLoading }: PostEdito
       featuredImage: images.length > 0 ? images[0].url : undefined, // Keep first image as featured for backward compatibility
       images: images.map(img => ({
         url: img.url,
-        aspectRatio: img.aspectRatio
+        aspectRatio: img.aspectRatio,
+        baseFilename: img.baseFilename
       })),
       categoryId: categoryId || undefined,
+      tagIds: selectedTagIds,
     }
 
     if (onSave) {
@@ -449,6 +457,16 @@ export default function PostEditor({ initialData, onSave, isLoading }: PostEdito
                     ))}
                   </select>
                 </div>
+              </div>
+              
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Tags
+                </label>
+                <TagSelector
+                  selectedTagIds={selectedTagIds}
+                  onTagsChange={setSelectedTagIds}
+                />
               </div>
             </div>
           </div>

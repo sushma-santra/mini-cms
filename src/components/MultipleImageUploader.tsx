@@ -24,23 +24,39 @@ export default function MultipleImageUploader({
   onImagesChange, 
   maxImages = 10 
 }: MultipleImageUploaderProps) {
-  const [showCropper, setShowCropper] = useState(false)
-  const [currentImage, setCurrentImage] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [showCropper, setShowCropper] = useState(false)
+  const [currentImage, setCurrentImage] = useState<File | null>(null)
+  const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { token } = useAuth()
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      const url = URL.createObjectURL(file)
-      setCurrentImage(url)
+      setCurrentImage(file)
       setShowCropper(true)
     }
   }
 
+  // Toggle expansion of image sets
+  const toggleSetExpansion = (baseFilename: string) => {
+    const newExpandedSets = new Set(expandedSets)
+    if (expandedSets.has(baseFilename)) {
+      newExpandedSets.delete(baseFilename)
+    } else {
+      newExpandedSets.add(baseFilename)
+    }
+    setExpandedSets(newExpandedSets)
+  }
+
+  // Auto-expand sets with only 1 version, keep others collapsed by default
+  const shouldAutoExpand = (imageGroup: UploadedImage[]) => {
+    return imageGroup.length === 1
+  }
+
   const handleCropComplete = async (crops: CroppedImageData[]) => {
-    if (crops.length === 0) return
+    if (!currentImage) return
 
     setUploading(true)
     try {
@@ -67,21 +83,31 @@ export default function MultipleImageUploader({
       })
 
       if (!response.ok) {
-        throw new Error('Upload failed')
+        const error = await response.json()
+        throw new Error(error.error || 'Upload failed')
       }
 
       const result = await response.json()
+      
+      // Get the shared base filename from the API response
+      const sharedBaseFilename = result.baseFilename || `upload-${Date.now()}`
       
       // Create new image objects from upload results
       const newImages = result.uploads.map((upload: any) => ({
         id: `img-${Date.now()}-${upload.aspectRatio}`,
         url: upload.url,
         aspectRatio: upload.aspectRatio,
-        baseFilename: upload.fileName,
+        baseFilename: sharedBaseFilename, // Use shared filename for all images in this batch
       }))
 
       // Add all new images to the list
       onImagesChange([...images, ...newImages])
+      
+      // Auto-expand the newly created set if it has multiple versions
+      if (newImages.length > 1) {
+        setExpandedSets(prev => new Set([...Array.from(prev), sharedBaseFilename]))
+      }
+      
       setShowCropper(false)
       setCurrentImage(null)
       
@@ -91,7 +117,7 @@ export default function MultipleImageUploader({
       }
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Failed to upload images')
+      alert(`Failed to upload images: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setUploading(false)
     }
@@ -118,7 +144,8 @@ export default function MultipleImageUploader({
 
   // Group images by base filename to show them together
   const groupedImages = images.reduce((groups, image) => {
-    const key = image.baseFilename || image.id
+    // Use baseFilename if available, otherwise create a unique group for each image
+    const key = image.baseFilename || `single-${image.id}`
     if (!groups[key]) {
       groups[key] = []
     }
@@ -155,28 +182,80 @@ export default function MultipleImageUploader({
         className="hidden"
       />
 
-      {/* Images Grid - Grouped by base filename */}
+      {/* Images Grid - Grouped by base filename with collapsible sets */}
       {Object.keys(groupedImages).length > 0 ? (
-        <div className="space-y-6">
-          {Object.entries(groupedImages).map(([baseFilename, imageGroup], groupIndex) => (
-            <div key={baseFilename} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <div className="flex items-center justify-between mb-3">
+        <div className="space-y-3">
+          {Object.entries(groupedImages).map(([baseFilename, imageGroup], groupIndex) => {
+            const isExpanded = expandedSets.has(baseFilename) || shouldAutoExpand(imageGroup)
+            const hasMultipleVersions = imageGroup.length > 1
+            
+            return (
+              <div key={baseFilename} className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+                {/* Set Header - Always visible */}
+                <div 
+                  className={`px-4 py-3 bg-gray-50 border-b border-gray-200 ${hasMultipleVersions ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                  onClick={hasMultipleVersions ? () => toggleSetExpansion(baseFilename) : undefined}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {hasMultipleVersions && (
+                        <svg 
+                          className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
                 <h4 className="text-sm font-medium text-gray-900">
-                  Image Set {groupIndex + 1} ({imageGroup.length} versions)
+                        Image Set {groupIndex + 1} ({imageGroup.length} version{imageGroup.length !== 1 ? 's' : ''})
                 </h4>
+                      {hasMultipleVersions && (
+                        <span className="text-xs text-gray-500">
+                          {isExpanded ? 'Click to collapse' : 'Click to expand'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {/* Quick preview of first image in collapsed state */}
+                      {!isExpanded && hasMultipleVersions && (
+                        <div className="flex -space-x-1">
+                          {imageGroup.slice(0, 3).map((image, idx) => (
+                            <div key={image.id} className="w-8 h-8 rounded border-2 border-white overflow-hidden">
+                              <img
+                                src={image.url}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                          {imageGroup.length > 3 && (
+                            <div className="w-8 h-8 rounded border-2 border-white bg-gray-100 flex items-center justify-center">
+                              <span className="text-xs text-gray-600">+{imageGroup.length - 3}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                 <button
                   type="button"
-                  onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                     // Remove all images in this group
                     const idsToRemove = imageGroup.map(img => img.id)
                     onImagesChange(images.filter(img => !idsToRemove.includes(img.id)))
                   }}
-                  className="text-red-600 hover:text-red-800 text-sm"
+                        className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50"
                 >
-                  Remove all versions
+                        Remove all
                 </button>
+                    </div>
+                  </div>
               </div>
               
+                {/* Set Content - Collapsible */}
+                {isExpanded && (
+                  <div className="p-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {imageGroup.map((image, index) => (
                   <div key={image.id} className="relative group">
@@ -212,7 +291,10 @@ export default function MultipleImageUploader({
                 ))}
               </div>
             </div>
-          ))}
+                )}
+              </div>
+            )
+          })}
         </div>
       ) : (
         <div className="border-2 border-gray-300 border-dashed rounded-lg p-12 text-center">
@@ -264,7 +346,7 @@ export default function MultipleImageUploader({
       {/* Image Cropper Modal */}
       {showCropper && currentImage && (
         <ImageCropper
-          image={currentImage}
+          image={URL.createObjectURL(currentImage)}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
         />
