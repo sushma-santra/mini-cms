@@ -36,6 +36,10 @@ export default function NewPostPage() {
     }
   }
 
+  const handleCancel = () => {
+    router.push('/admin/posts')
+  }
+
   return (
     <div>
       <div className="border-b border-gray-200 pb-5 mb-6">
@@ -45,7 +49,7 @@ export default function NewPostPage() {
         </p>
       </div>
 
-      <PostEditor onSave={handleSave} isLoading={isLoading} />
+      <PostEditor onSave={handleSave} onCancel={handleCancel} isLoading={isLoading} />
     </div>
   )
 } 

@@ -6,14 +6,19 @@ import { z } from 'zod'
 
 const updatePostSchema = z.object({
   title: z.string().min(1).optional(),
-  content: z.string().min(1).optional(),
+  fullText: z.string().min(1).optional(),
+  caption: z.string().optional(),
+  description: z.string().optional(),
+  externalLinks: z.string().optional(),
   seoTitle: z.string().optional(),
   seoDescription: z.string().optional(),
-  featuredImage: z.string().optional(),
+  featuredImage: z.string().nullable().optional(),
   images: z.array(z.object({
     url: z.string(),
     aspectRatio: z.string(),
-    baseFilename: z.string().optional()
+    baseFilename: z.string().optional(),
+    originalUrl: z.string().optional(),
+    isExisting: z.boolean().optional()
   })).optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
   categoryId: z.string().optional(),
@@ -90,9 +95,41 @@ export async function PUT(
     const updateData: any = { ...data }
     delete updateData.tagIds // Remove tagIds from direct update data
     
-    // Handle images field properly
+    // Handle featuredImage field - explicitly clear if null
+    if (data.featuredImage === null) {
+      updateData.featuredImage = null
+    }
+    
+    // Handle images field properly - replace with current image state
     if (data.images !== undefined) {
-      updateData.images = data.images
+      if (data.images === null || (Array.isArray(data.images) && data.images.length === 0)) {
+        // No images provided - clear the images field
+        updateData.images = []
+      } else {
+        // Separate existing images from new images
+        const existingImages = data.images.filter(img => img.isExisting)
+        const newImages = data.images.filter(img => !img.isExisting)
+        
+        // The final images array should only contain:
+        // 1. Existing images that are still present in the frontend state
+        // 2. New images that were just uploaded
+        updateData.images = [
+          // Existing images (already in correct format)
+          ...existingImages.map(img => ({
+            url: img.url,
+            aspectRatio: img.aspectRatio,
+            baseFilename: img.baseFilename,
+            originalUrl: img.originalUrl  // Include original URL
+          })),
+          // New images (also in correct format)
+          ...newImages.map(img => ({
+            url: img.url,
+            aspectRatio: img.aspectRatio,
+            baseFilename: img.baseFilename,
+            originalUrl: img.originalUrl  // Include original URL
+          }))
+        ]
+      }
     }
 
     // Generate new slug if title changed
@@ -114,9 +151,9 @@ export async function PUT(
       updateData.slug = slug
     }
 
-    // Generate new excerpt if content changed
-    if (data.content) {
-      updateData.excerpt = generateExcerpt(data.content)
+    // Generate new excerpt if fullText changed
+    if (data.fullText) {
+      updateData.excerpt = generateExcerpt(data.fullText)
     }
 
     // Set publishedAt if status changed to PUBLISHED

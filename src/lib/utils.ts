@@ -8,9 +8,22 @@ export function cn(...inputs: ClassValue[]) {
 export function generateSlug(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9 -]/g, '')
-    .replace(/\s+/g, '-')
+    // Replace periods between digits and letters with nothing (no.6 -> no6, v2.5 -> v25)
+    .replace(/([a-z0-9])\.([a-z0-9])/g, '$1$2')
+    // Replace remaining periods with hyphens
+    .replace(/\./g, '-')
+    // Replace ampersands with 'and'
+    .replace(/&/g, 'and')
+    // Replace multiple spaces with single space
+    .replace(/\s+/g, ' ')
+    // Replace spaces with hyphens
+    .replace(/\s/g, '-')
+    // Remove any remaining special characters except hyphens and alphanumeric
+    .replace(/[^a-z0-9-]/g, '')
+    // Replace multiple hyphens with single hyphen
     .replace(/-+/g, '-')
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, '')
     .trim()
 }
 

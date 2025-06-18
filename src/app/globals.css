@@ -73,4 +73,21 @@
   border-bottom: 1px solid #ccc;
   border-left: 1px solid #ccc;
   border-right: 1px solid #ccc;
+}
+
+/* Description editor styles using Tailwind classes */
+.description-editor .ql-toolbar {
+  @apply bg-gray-50 border-gray-200;
+}
+
+.description-editor .ql-container {
+  @apply text-sm;
+}
+
+.description-editor .ql-editor {
+  @apply min-h-[120px] p-3;
+}
+
+.description-editor .ql-editor.ql-blank::before {
+  @apply italic text-gray-400;
 } 

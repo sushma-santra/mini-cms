@@ -25,8 +25,11 @@ model Post {
   id          String      @id @default(cuid())
   title       String
   slug        String      @unique
-  content     String
+  fullText    String      // Changed from 'content' for consistent naming
   excerpt     String?
+  caption     String?     // New field: Short caption
+  description String?     // New field: Description
+  externalLinks String?   // New field: External links
   seoTitle    String?
   seoDescription String?
   featuredImage String?

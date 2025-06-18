@@ -15,13 +15,23 @@ export async function GET(request: NextRequest) {
     const categories = await prisma.category.findMany({
       include: {
         _count: {
-          select: { posts: true }
+          select: { 
+            posts: {
+              where: { status: 'PUBLISHED' }  // Only count published posts
+            }
+          }
         }
       },
       orderBy: { name: 'asc' },
     })
 
-    return NextResponse.json({ categories })
+    // Transform the data to match what the frontend expects
+    const transformedCategories = categories.map(category => ({
+      ...category,
+      posts: Array(category._count.posts).fill(null)  // Create an array with correct length
+    }))
+
+    return NextResponse.json({ categories: transformedCategories })
   } catch (error) {
     console.error('Get categories error:', error)
     return NextResponse.json(
