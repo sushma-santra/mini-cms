@@ -10,6 +10,9 @@ interface DashboardStats {
   draftPosts: number
   totalCategories: number
   totalTags: number
+  totalCustomerStories: number
+  publishedCustomerStories: number
+  draftCustomerStories: number
   recentPosts: Array<{
     id: string
     title: string
@@ -31,6 +34,9 @@ export default function AdminDashboard() {
     draftPosts: 0,
     totalCategories: 0,
     totalTags: 0,
+    totalCustomerStories: 0,
+    publishedCustomerStories: 0,
+    draftCustomerStories: 0,
     recentPosts: []
   })
   const [loading, setLoading] = useState(true)
@@ -58,6 +64,9 @@ export default function AdminDashboard() {
           draftPosts: data.stats.draftPosts,
           totalCategories: data.stats.totalCategories || 0,
           totalTags: data.stats.totalTags || 0,
+          totalCustomerStories: data.stats.totalCustomerStories || 0,
+          publishedCustomerStories: data.stats.publishedCustomerStories || 0,
+          draftCustomerStories: data.stats.draftCustomerStories || 0,
           recentPosts: data.recentPosts,
         })
       }
@@ -211,6 +220,64 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-400 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Customer Stories</dt>
+                  <dd className="text-lg font-medium text-gray-900">{stats.totalCustomerStories}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-400 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Stories Published</dt>
+                  <dd className="text-lg font-medium text-gray-900">{stats.publishedCustomerStories}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-yellow-400 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Stories Drafts</dt>
+                  <dd className="text-lg font-medium text-gray-900">{stats.draftCustomerStories}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
@@ -259,6 +326,15 @@ export default function AdminDashboard() {
                   Manage Tags
                 </Link>
               )}
+              <Link
+                href="/admin/customer-stories"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 w-full justify-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Manage Customer Stories
+              </Link>
             </div>
           </div>
         </div>
