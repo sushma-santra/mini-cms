@@ -47,7 +47,7 @@ const updatePostSchema = basePostSchema.partial().refine(data => {
 // GET /api/posts - Get all posts (role-based filtering)
 export async function GET(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 // POST /api/posts - Create new post
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     const body = await request.json()
     
     const data = createPostSchema.parse(body)

@@ -401,6 +401,33 @@ npm start
 - `npm run db:migrate` - Run database migrations
 - `npm run db:generate` - Generate Prisma client
 - `npm run db:studio` - Open Prisma Studio
+- `npm run deploy` - Build, package, and deploy to S3
+
+### Deployment
+
+The project includes an automated deployment script that builds the application, creates a deployment package, and uploads it to S3.
+
+#### Quick Deployment
+```bash
+# Set your deployment bucket
+export DEPLOY_S3_BUCKET=your-deployment-bucket
+
+# Run deployment
+npm run deploy
+```
+
+#### Advanced Deployment
+```bash
+# With custom configuration
+node scripts/deploy.js --bucket my-bucket --prefix releases --profile production
+```
+
+The deployment script will:
+- Build the Next.js application
+- Create `si-cms-deploy.zip` with all necessary files
+- Upload to `s3://{bucket}/new-cms-beta/si-cms-deploy.zip`
+
+For detailed deployment documentation, see [scripts/README.md](scripts/README.md).
 
 ### Contributing
 1. Fork the repository

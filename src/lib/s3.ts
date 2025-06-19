@@ -11,33 +11,63 @@ const s3Client = new S3Client({
 })
 
 export const uploadFile = async (file: File, key: string): Promise<string> => {
-  const buffer = await file.arrayBuffer()
-  
-  const command = new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: key,
-    Body: new Uint8Array(buffer),
-    ContentType: file.type,
-  })
+  try {
+    const buffer = await file.arrayBuffer()
+    
+    // Check if bucket is configured
+    if (!process.env.AWS_S3_BUCKET) {
+      throw new Error('AWS_S3_BUCKET environment variable is not set')
+    }
+    
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: key,
+      Body: new Uint8Array(buffer),
+      ContentType: file.type,
+    })
 
-  await s3Client.send(command)
-  
-  // Return relative path instead of full S3 URL
-  return key
+    await s3Client.send(command)
+    
+    // Return relative path instead of full S3 URL
+    return key
+  } catch (error) {
+    console.error('S3 upload error:', error)
+    console.error('S3 configuration:', {
+      bucket: process.env.AWS_S3_BUCKET,
+      region: process.env.AWS_REGION,
+      profile: process.env.AWS_PROFILE
+    })
+    throw error
+  }
 }
 
 export const uploadBuffer = async (buffer: Buffer, key: string, contentType: string): Promise<string> => {
-  const command = new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: key,
-    Body: buffer,
-    ContentType: contentType,
-  })
+  try {
+    // Check if bucket is configured
+    if (!process.env.AWS_S3_BUCKET) {
+      throw new Error('AWS_S3_BUCKET environment variable is not set')
+    }
+    
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    })
 
-  await s3Client.send(command)
-  
-  // Return relative path instead of full S3 URL
-  return key
+    await s3Client.send(command)
+    
+    // Return relative path instead of full S3 URL
+    return key
+  } catch (error) {
+    console.error('S3 uploadBuffer error:', error)
+    console.error('S3 configuration:', {
+      bucket: process.env.AWS_S3_BUCKET,
+      region: process.env.AWS_REGION,
+      profile: process.env.AWS_PROFILE
+    })
+    throw error
+  }
 }
 
 export const deleteFile = async (key: string): Promise<void> => {

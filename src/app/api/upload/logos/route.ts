@@ -8,7 +8,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml', 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

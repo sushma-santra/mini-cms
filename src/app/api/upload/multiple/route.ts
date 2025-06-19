@@ -5,7 +5,7 @@ import { getAspectRatioDirectory } from '@/lib/image-utils'
 
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
