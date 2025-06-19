@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { uploadFile, getRelativePath } from '@/lib/s3'
+import { uploadFile, getS3LogoKey, getRelativePath } from '@/lib/s3'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const fileName = `${timestamp}-${randomString}.${extension}`
     
     // Upload to S3 and get relative path
-    const s3Key = `stg/assets/waf-images/uploads/images/${fileName}`
+    const s3Key = getS3LogoKey(fileName)
     await uploadFile(file, s3Key)
     const imageUrl = getRelativePath(s3Key)
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       type: file.type,
     })
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('Logo upload error:', error)
     return NextResponse.json(
       { error: 'Upload failed' },
       { status: 500 }

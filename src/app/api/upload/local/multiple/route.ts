@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { writeFile } from 'fs/promises'
-import path from 'path'
+import { uploadBuffer, generateBaseFilename, getRelativePath } from '@/lib/s3'
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,18 +45,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate base filename for the group
-    const timestamp = Date.now()
-    const randomString = Math.random().toString(36).substring(2, 15)
-    const baseFilename = `${timestamp}-${randomString}`
+    const baseFilename = generateBaseFilename()
 
     const uploadResults = []
-
-    // Create uploads directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'images')
-    const fs = require('fs')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
 
     // Process each file
     for (let i = 0; i < files.length; i++) {
@@ -74,13 +64,14 @@ export async function POST(request: NextRequest) {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
 
-      // Write file to disk
-      const filePath = path.join(uploadDir, fileName)
-      await writeFile(filePath, buffer)
+      // Upload to S3 with new path structure and get relative path
+      const s3Key = `stg/assets/waf-images/uploads/images/${fileName}`
+      await uploadBuffer(buffer, s3Key, file.type)
+      const imageUrl = getRelativePath(s3Key)
 
       // Create result object
       uploadResults.push({
-        url: `/uploads/images/${fileName}`,
+        url: imageUrl,
         aspectRatio: aspectRatio,
         fileName: baseFilename, // Use base filename for grouping
         size: file.size,

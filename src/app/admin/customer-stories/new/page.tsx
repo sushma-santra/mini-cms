@@ -13,8 +13,6 @@ export default function NewCustomerStoryPage() {
   const handleSave = async (data: any) => {
     setIsLoading(true)
     try {
-      console.log('Sending data to API:', JSON.stringify(data, null, 2))
-      
       const response = await fetch('/api/customerstories', {
         method: 'POST',
         headers: {
@@ -27,7 +25,6 @@ export default function NewCustomerStoryPage() {
       const responseData = await response.json()
 
       if (!response.ok) {
-        console.error('API error response:', responseData)
         if (responseData.details) {
           // If we have validation errors, show them
           const errorMessage = Array.isArray(responseData.details)
@@ -40,7 +37,6 @@ export default function NewCustomerStoryPage() {
 
       router.push('/admin/customer-stories')
     } catch (error) {
-      console.error('Error creating customer story:', error)
       alert(error instanceof Error ? error.message : 'Failed to create customer story. Please try again.')
     } finally {
       setIsLoading(false)

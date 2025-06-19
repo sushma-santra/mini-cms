@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { getImageUrl } from '@/lib/image-utils-client'
 
 export interface ClientLogo {
   id: string
@@ -179,7 +180,7 @@ export default function ClientLogoUploader({
             >
               <div className="aspect-w-16 aspect-h-9 bg-gray-50">
                 <img
-                  src={logo.url}
+                  src={getImageUrl(logo.url)}
                   alt={logo.name}
                   className="w-full h-full object-contain p-2"
                 />

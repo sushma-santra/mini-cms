@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export interface User {
   id: string
@@ -17,48 +18,48 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return await bcrypt.compare(password, hashedPassword)
 }
 
-export function generateToken(user: User): string {
-  return jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email, 
-      name: user.name, 
-      role: user.role 
-    },
-    process.env.NEXTAUTH_SECRET || 'fallback-secret',
-    { expiresIn: '7d' }
-  )
+const secret = process.env.NEXTAUTH_SECRET || 'fallback-secret-key'
+
+export const generateToken = (email: string): string => {
+  return jwt.sign({ email }, secret, { expiresIn: '7d' })
 }
 
-export function verifyToken(token: string): User | null {
+export const verifyToken = (token: string): { email: string } | null => {
   try {
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as User
+    const decoded = jwt.verify(token, secret) as { email: string }
     return decoded
   } catch (error) {
     return null
   }
 }
 
-export function getUserFromRequest(request: NextRequest): User | null {
-  const authHeader = request.headers.get('Authorization')
+export const requireAuth = async (request: NextRequest) => {
+  const authHeader = request.headers.get('authorization')
+  
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null
+    throw new Error('No valid Authorization header found')
   }
 
   const token = authHeader.substring(7)
-  return verifyToken(token)
-}
-
-export function requireAuth(request: NextRequest): User {
-  const user = getUserFromRequest(request)
-  if (!user) {
-    throw new Error('Unauthorized')
+  const decoded = verifyToken(token)
+  
+  if (!decoded) {
+    throw new Error('Invalid token')
   }
+
+  const user = await prisma.user.findUnique({
+    where: { email: decoded.email }
+  })
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
   return user
 }
 
-export function requireAdmin(request: NextRequest): User {
-  const user = requireAuth(request)
+export async function requireAdmin(request: NextRequest) {
+  const user = await requireAuth(request)
   if (user.role !== 'ADMIN') {
     throw new Error('Admin access required')
   }
