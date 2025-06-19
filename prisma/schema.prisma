@@ -8,57 +8,53 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(AUTHOR)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  posts Post[]
+  id              String          @id @default(cuid())
+  email           String          @unique
+  password        String
+  name            String
+  role            UserRole        @default(AUTHOR)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  customerStories CustomerStory[]
+  posts           Post[]
 
   @@map("users")
 }
 
 model Post {
-  id          String      @id @default(cuid())
-  title       String
-  slug        String      @unique
-  fullText    String      // Changed from 'content' for consistent naming
-  excerpt     String?
-  caption     String?     // New field: Short caption
-  description String?     // New field: Description
-  externalLinks String?   // New field: External links
-  seoTitle    String?
+  id             String     @id @default(cuid())
+  title          String
+  slug           String     @unique
+  fullText       String?
+  excerpt        String?
+  seoTitle       String?
   seoDescription String?
-  featuredImage String?
-  images      Json?       // Store multiple images as JSON array
-  status      PostStatus  @default(DRAFT)
-  publishedAt DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  author   User   @relation(fields: [authorId], references: [id])
-  authorId String
-
-  category   Category? @relation(fields: [categoryId], references: [id])
-  categoryId String?
-
-  tags Tag[]
+  featuredImage  String?
+  status         PostStatus @default(DRAFT)
+  publishedAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  authorId       String
+  categoryId     String?
+  images         Json?
+  caption        String?
+  description    String?
+  externalLinks  String?
+  author         User       @relation(fields: [authorId], references: [id])
+  category       Category?  @relation(fields: [categoryId], references: [id])
+  tags           Tag[]      @relation("PostToTag")
 
   @@map("posts")
 }
 
 model Category {
-  id          String @id @default(cuid())
-  name        String @unique
-  slug        String @unique
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  posts Post[]
+  posts       Post[]
 
   @@map("categories")
 }
@@ -67,13 +63,41 @@ model Tag {
   id          String   @id @default(cuid())
   name        String   @unique
   slug        String   @unique
-  description String?
   createdAt   DateTime @default(now())
+  description String?
   updatedAt   DateTime @updatedAt
-
-  posts Post[]
+  posts       Post[]   @relation("PostToTag")
 
   @@map("tags")
+}
+
+model CustomerStory {
+  id              String     @id @default(cuid())
+  title           String     @db.VarChar(200)
+  slug            String     @unique @db.VarChar(250)
+  date            DateTime   @default(now())
+  caption         String?    @db.VarChar(500)
+  description     String?
+  mediaGallery    Json?
+  stats           Json?
+  contentSections Json?
+  seoTitle        String?    @db.VarChar(60)
+  seoDescription  String?    @db.VarChar(160)
+  status          PostStatus @default(DRAFT)
+  publishedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  authorId        String
+  externalLink    String?    @db.VarChar(2048)
+  industry        Industry   @default(TEAM)
+  solutions       Solution[] @default([])
+  clientLogos     Json?
+  author          User       @relation(fields: [authorId], references: [id])
+
+  @@index([status])
+  @@index([industry])
+  @@index([publishedAt])
+  @@map("customer_stories")
 }
 
 enum UserRole {
@@ -85,4 +109,34 @@ enum PostStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
-} 
+}
+
+enum Industry {
+  TEAM
+  BROADCASTERS_AND_OTT_PLATFORMS
+  PUBLISHERS
+  GAMING_OPERATORS
+  VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION
+  DIGITAL_PLATFORMS
+  FAN_DATA_AND_CRM_CONSULTING
+  MARKETING_AND_COMMUNITY
+  GAMING_AND_FAN_LOYALTY
+  MANAGEMENT
+  VIDEO_PRODUCTION
+  SPORTS_DATA_SOLUTIONS
+}
+
+enum Solution {
+  TEAM
+  BROADCASTERS_AND_OTT_PLATFORMS
+  PUBLISHERS
+  GAMING_OPERATORS
+  VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION
+  DIGITAL_PLATFORMS
+  FAN_DATA_AND_CRM_CONSULTING
+  MARKETING_AND_COMMUNITY
+  GAMING_AND_FAN_LOYALTY
+  MANAGEMENT
+  VIDEO_PRODUCTION
+  SPORTS_DATA_SOLUTIONS
+}

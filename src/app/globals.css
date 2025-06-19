@@ -90,4 +90,77 @@
 
 .description-editor .ql-editor.ql-blank::before {
   @apply italic text-gray-400;
+}
+
+/* Enhanced Quill Editor Styles */
+.ql-editor blockquote {
+  @apply border-l-4 border-indigo-500 pl-4 py-2 my-4 bg-gray-50 italic text-gray-700 rounded-r-md;
+}
+
+.ql-editor .ql-code-block-container {
+  @apply bg-gray-100 rounded-md p-3 my-2 font-mono text-sm;
+}
+
+.ql-editor pre {
+  @apply bg-gray-900 text-gray-100 rounded-md p-4 my-4 overflow-x-auto;
+}
+
+.ql-editor code {
+  @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.ql-editor h1 {
+  @apply text-3xl font-bold my-4 text-gray-900;
+}
+
+.ql-editor h2 {
+  @apply text-2xl font-bold my-3 text-gray-900;
+}
+
+.ql-editor h3 {
+  @apply text-xl font-semibold my-3 text-gray-900;
+}
+
+.ql-editor h4 {
+  @apply text-lg font-semibold my-2 text-gray-900;
+}
+
+.ql-editor h5 {
+  @apply text-base font-semibold my-2 text-gray-900;
+}
+
+.ql-editor h6 {
+  @apply text-sm font-semibold my-2 text-gray-800;
+}
+
+.ql-editor ul, .ql-editor ol {
+  @apply my-4 pl-6;
+}
+
+.ql-editor li {
+  @apply my-1;
+}
+
+.ql-editor a {
+  @apply text-indigo-600 hover:text-indigo-800 underline;
+}
+
+.ql-editor .ql-size-small {
+  @apply text-sm;
+}
+
+.ql-editor .ql-size-large {
+  @apply text-lg;
+}
+
+.ql-editor .ql-size-huge {
+  @apply text-xl;
+}
+
+.ql-editor .ql-font-serif {
+  @apply font-serif;
+}
+
+.ql-editor .ql-font-monospace {
+  @apply font-mono;
 } 
