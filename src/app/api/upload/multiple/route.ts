@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { writeFile } from 'fs/promises'
-import path from 'path'
-import { generateBaseFilename, getAspectRatioDirectory } from '@/lib/image-utils'
+import { uploadBuffer, generateBaseFilename, getS3Key, getS3OriginalKey, getRelativePath, getImageRelativePath, getOriginalRelativePath } from '@/lib/s3'
+import { getAspectRatioDirectory } from '@/lib/image-utils'
 
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     
     const formData = await request.formData()
     const files = formData.getAll('files') as File[]
@@ -70,21 +69,14 @@ export async function POST(request: NextRequest) {
 
     // Save original file if provided (for future re-cropping)
     if (originalFile) {
-      const originalDir = path.join(process.cwd(), 'public', 'uploads', 'images', 'originals')
-      
-      // Create directory if it doesn't exist
-      const fs = require('fs')
-      if (!fs.existsSync(originalDir)) {
-        fs.mkdirSync(originalDir, { recursive: true })
-      }
-
-      // Convert original file to buffer and save
       const originalBytes = await originalFile.arrayBuffer()
       const originalBuffer = Buffer.from(originalBytes)
-      const originalFilePath = path.join(originalDir, baseFilename)
-      await writeFile(originalFilePath, originalBuffer)
+      const extension = originalFile.name.split('.').pop() || 'jpg'
+      const originalKey = getS3OriginalKey(baseFilename, extension)
       
-      originalUrl = `/uploads/images/originals/${baseFilename}`
+      // Upload to S3 and get relative path
+      await uploadBuffer(originalBuffer, originalKey, originalFile.type)
+      originalUrl = getOriginalRelativePath(baseFilename, extension)
     }
 
     // Process each cropped file
@@ -95,26 +87,21 @@ export async function POST(request: NextRequest) {
       // Get directory for this aspect ratio
       const directory = getAspectRatioDirectory(aspectRatio)
       
-      // Create directory path
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'images', directory)
-      
-      // Create directory if it doesn't exist
-      const fs = require('fs')
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true })
-      }
-
       // Convert file to buffer
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
-
-      // Write file to disk
-      const filePath = path.join(uploadDir, baseFilename)
-      await writeFile(filePath, buffer)
+      const extension = file.name.split('.').pop() || 'jpg'
+      
+      // Generate S3 key for this aspect ratio
+      const s3Key = getS3Key(baseFilename, directory, extension)
+      
+      // Upload to S3 and get relative path
+      await uploadBuffer(buffer, s3Key, file.type)
+      const imageUrl = getImageRelativePath(baseFilename, directory, extension)
 
       // Create result object
       uploadResults.push({
-        url: `/uploads/images/${directory}/${baseFilename}`,
+        url: imageUrl,
         aspectRatio: aspectRatio,
         directory: directory,
         fileName: baseFilename,
@@ -126,7 +113,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       uploads: uploadResults,
-      originalUrl: originalUrl,  // New: return original image URL
+      originalUrl: originalUrl,  // Return relative path for original image
       baseFilename: baseFilename,
       totalFiles: files.length,
     })

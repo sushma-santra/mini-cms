@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import ImageCropper, { CroppedImageData } from './ImageCropper'
 import { useAuth } from '@/lib/auth-context'
 import { generateBaseFilename, getAspectRatioLabel } from '@/lib/image-utils'
+import { getImageUrl } from '@/lib/image-utils-client'
 
 export interface UploadedImage {
   id: string
@@ -35,7 +36,7 @@ export default function MultipleImageUploader({
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
   const editFileInputRef = useRef<HTMLInputElement>(null)
-  const { token } = useAuth()
+  const { token, user, isAuthenticated } = useAuth()
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -74,7 +75,6 @@ export default function MultipleImageUploader({
         setShowCropper(true)
       } else {
         // Fallback: if no original URL, use the first cropped image (legacy behavior)
-        console.warn('No original image URL found, using cropped image as fallback')
         setCurrentImageUrl(imageGroup[0].url)
         setCurrentImage(null)
         setShowCropper(true)
@@ -110,6 +110,11 @@ export default function MultipleImageUploader({
 
     setUploading(true)
     try {
+      // Debug: Check if token exists
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.')
+      }
+
       if (editingMode === 'selective' && editingImageSet && currentImageUrl && !currentImage) {
         // Selective editing - only update the specific aspect ratios that were re-cropped
         const baseFilename = editingImageSet
@@ -267,7 +272,6 @@ export default function MultipleImageUploader({
         editFileInputRef.current.value = ''
       }
     } catch (error) {
-      console.error('Upload error:', error)
       alert(`Failed to upload images: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setUploading(false)
@@ -396,7 +400,7 @@ export default function MultipleImageUploader({
                             {imageGroup.slice(0, 3).map((image, idx) => (
                               <div key={`${image.id}-${image.url}-preview`} className="w-8 h-8 rounded border-2 border-white overflow-hidden">
                                 <img
-                                  src={image.url}
+                                  src={getImageUrl(image.url)}
                                   alt=""
                                   className="w-full h-full object-cover"
                                 />
@@ -464,7 +468,7 @@ export default function MultipleImageUploader({
                     <div key={`${image.id}-${image.url}`} className="relative group">
                       <div className="aspect-square bg-white rounded-lg overflow-hidden border border-gray-200">
                         <img
-                          src={image.url}
+                          src={getImageUrl(image.url)}
                           alt={`${getAspectRatioLabel(image.aspectRatio)} version`}
                           className="w-full h-full object-cover"
                         />

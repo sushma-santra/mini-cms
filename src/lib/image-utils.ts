@@ -35,11 +35,20 @@ export function getAspectRatioDirectory(aspectRatio: string): string {
 }
 
 /**
- * Get the full upload path for an image with aspect ratio
+ * Get the full upload path for an image with aspect ratio (S3 URL)
  */
 export function getUploadPath(baseFilename: string, aspectRatio: string): string {
   const directory = getAspectRatioDirectory(aspectRatio)
-  return `/uploads/images/${directory}/${baseFilename}`
+  const bucket = process.env.AWS_S3_BUCKET || 'your-bucket-name'
+  return `https://${bucket}.s3.amazonaws.com/stg/assets/waf-images/uploads/images/${directory}/${baseFilename}`
+}
+
+/**
+ * Get the S3 key for an image with aspect ratio
+ */
+export function getS3Key(baseFilename: string, aspectRatio: string): string {
+  const directory = getAspectRatioDirectory(aspectRatio)
+  return `stg/assets/waf-images/uploads/images/${directory}/${baseFilename}`
 }
 
 /**

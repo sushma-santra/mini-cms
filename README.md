@@ -1,16 +1,17 @@
 # Simple CMS - Blog Management System
 
-A simple and efficient Content Management System (CMS) built with Next.js, React, and PostgreSQL. This CMS focuses on essential blog post management with CRUD operations, WYSIWYG editing, image uploads, and SEO optimization.
+A simple and efficient Content Management System (CMS) built with Next.js, React, and PostgreSQL. This CMS focuses on essential blog post management with CRUD operations, WYSIWYG editing, secure AWS S3 image uploads, and SEO optimization.
 
 ## Features
 
 ### Core Functionalities
 - ✅ **CRUD Operations** - Create, Read, Update, Delete blog posts
 - ✅ **WYSIWYG Editor** - Rich text editing capabilities (planned integration with ReactQuill)
-- ✅ **Image Uploads** - AWS S3 integration for media storage
+- ✅ **Secure Image Uploads** - AWS S3 integration with aspect ratio management
 - ✅ **SEO Optimization** - SEO titles, descriptions, and meta tags
 - ✅ **Draft/Publish System** - Manage post publication status
 - ✅ **Author Management** - Multi-user support with roles
+- ✅ **Customer Stories** - Comprehensive customer success story management
 
 ### Technical Features
 - ✅ **Authentication** - JWT-based user authentication
@@ -19,6 +20,7 @@ A simple and efficient Content Management System (CMS) built with Next.js, React
 - ✅ **Spam Protection** - reCAPTCHA integration (planned)
 - ✅ **Responsive Design** - Mobile-friendly admin interface
 - ✅ **Type Safety** - Full TypeScript support
+- ✅ **Secure File Storage** - AWS S3 with relative path abstraction
 
 ## Tech Stack
 
@@ -26,7 +28,7 @@ A simple and efficient Content Management System (CMS) built with Next.js, React
 - **Styling**: Tailwind CSS
 - **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: JWT tokens
-- **File Storage**: AWS S3
+- **File Storage**: AWS S3 with secure path abstraction
 - **Caching**: Redis
 - **Validation**: Zod schemas
 - **Rich Text**: ReactQuill (WYSIWYG editor)
@@ -42,21 +44,27 @@ simple-cms/
 │   │   ├── admin/             # Admin interface
 │   │   │   ├── layout.tsx     # Admin layout
 │   │   │   ├── page.tsx       # Dashboard
-│   │   │   └── posts/         # Post management
+│   │   │   ├── posts/         # Post management
+│   │   │   └── customer-stories/ # Customer story management
 │   │   ├── api/               # API routes
 │   │   │   ├── auth/          # Authentication
 │   │   │   ├── posts/         # Post CRUD
-│   │   │   └── upload/        # File upload
+│   │   │   ├── upload/        # File upload (S3)
+│   │   │   └── customerstories/ # Customer story CRUD
 │   │   ├── globals.css        # Global styles
 │   │   └── layout.tsx         # Root layout
 │   ├── components/            # Reusable components
 │   │   ├── ui/                # UI components
-│   │   └── PostEditor.tsx     # Post editor
+│   │   ├── PostEditor.tsx     # Post editor
+│   │   ├── CustomerStoryEditor.tsx # Customer story editor
+│   │   ├── MultipleImageUploader.tsx # S3 image uploader
+│   │   └── ImageCropper.tsx   # Image cropping utility
 │   └── lib/                   # Utilities
 │       ├── auth.ts            # Authentication
 │       ├── prisma.ts          # Database client
 │       ├── redis.ts           # Cache client
-│       ├── s3.ts              # File upload
+│       ├── s3.ts              # S3 file operations
+│       ├── image-utils-client.ts # Client-side image URL handling
 │       └── utils.ts           # Helper functions
 ├── package.json
 ├── tailwind.config.js
@@ -69,7 +77,7 @@ simple-cms/
 ### Prerequisites
 - Node.js 18+
 - PostgreSQL database
-- AWS S3 bucket (for image uploads)
+- AWS S3 bucket (for secure image storage)
 - Redis instance (optional, for caching)
 
 ### 1. Clone the Repository
@@ -84,7 +92,7 @@ npm install
 ```
 
 ### 3. Environment Configuration
-Create a `.env` file in the root directory:
+Create a `.env.local` file in the root directory:
 
 ```env
 # Database
@@ -94,14 +102,13 @@ DATABASE_URL="postgresql://username:password@localhost:5432/simple_cms"
 REDIS_URL="redis://localhost:6379"
 
 # AWS S3 Configuration
-AWS_ACCESS_KEY_ID="your_aws_access_key"
-AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 AWS_REGION="us-east-1"
 AWS_S3_BUCKET="your-s3-bucket-name"
+NEXT_PUBLIC_AWS_S3_BUCKET="your-s3-bucket-name"
 
-# reCAPTCHA Configuration (optional)
-RECAPTCHA_SITE_KEY="your_recaptcha_site_key"
-RECAPTCHA_SECRET_KEY="your_recaptcha_secret_key"
+# AWS Credentials (use AWS CLI profiles instead of hardcoded keys)
+# AWS_ACCESS_KEY_ID="your_aws_access_key"  # Not recommended
+# AWS_SECRET_ACCESS_KEY="your_aws_secret_key"  # Not recommended
 
 # NextAuth Configuration
 NEXTAUTH_SECRET="your_nextauth_secret"
@@ -111,7 +118,37 @@ NEXTAUTH_URL="http://localhost:3000"
 NODE_ENV="development"
 ```
 
-### 4. Database Setup
+### 4. AWS S3 Setup
+
+#### Option A: AWS CLI Profile (Recommended)
+1. Install AWS CLI: `aws configure`
+2. Set up your profile with S3 access
+3. Ensure your profile has permissions for:
+   - `s3:PutObject`
+   - `s3:GetObject`
+   - `s3:DeleteObject`
+
+#### Option B: Environment Variables (Less Secure)
+```env
+AWS_ACCESS_KEY_ID="your_aws_access_key"
+AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
+```
+
+#### S3 Bucket Configuration
+1. Create an S3 bucket for your application
+2. Configure CORS for your bucket:
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "POST", "PUT", "DELETE"],
+    "AllowedOrigins": ["http://localhost:3000", "https://yourdomain.com"],
+    "ExposeHeaders": []
+  }
+]
+```
+
+### 5. Database Setup
 ```bash
 # Generate Prisma client
 npm run db:generate
@@ -123,7 +160,7 @@ npm run db:migrate
 npm run db:studio
 ```
 
-### 5. Create Initial Admin User
+### 6. Create Initial Admin User
 You'll need to create an admin user manually in the database or through Prisma Studio:
 
 ```sql
@@ -138,7 +175,7 @@ VALUES (
 );
 ```
 
-### 6. Start Development Server
+### 7. Start Development Server
 ```bash
 npm run dev
 ```
@@ -160,12 +197,43 @@ Access the admin interface at `/admin` after logging in.
 - **View All Posts**: `/admin/posts`
 - **Edit Posts**: `/admin/posts/[id]/edit`
 
+#### Customer Story Management
+- **Create Customer Stories**: `/admin/customer-stories/new`
+- **View All Stories**: `/admin/customer-stories`
+- **Edit Stories**: `/admin/customer-stories/[id]/edit`
+
 #### Post Editor Features
 - Rich text content editing
 - SEO title and description
-- Featured image upload
+- Secure S3 image upload with aspect ratio management
 - Draft/Published status toggle
 - Author assignment
+
+### Image Upload System
+
+#### Security Features
+- **Relative Path Storage**: Images are stored with relative paths, hiding S3 bucket details
+- **Aspect Ratio Management**: Automatic organization by aspect ratio (1:1, 16:9, etc.)
+- **Original Image Preservation**: Original images saved for re-cropping
+- **Client-Side URL Construction**: Full S3 URLs constructed only when needed for display
+
+#### Upload Endpoints
+- `POST /api/upload` - Single image upload
+- `POST /api/upload/multiple` - Multiple aspect ratio uploads
+- `POST /api/upload/logo` - Logo uploads
+- `POST /api/upload/local` - Local storage fallback
+
+#### Image Organization
+```
+S3 Bucket Structure:
+stg/assets/waf-images/uploads/
+├── images/
+│   ├── 1-1/           # Square images
+│   ├── 16-9/          # Landscape images
+│   ├── 9-16/          # Portrait images
+│   └── originals/     # Original uncropped images
+└── logos/             # Client logos
+```
 
 ### API Endpoints
 
@@ -179,8 +247,17 @@ Access the admin interface at `/admin` after logging in.
 - `PUT /api/posts/[id]` - Update post
 - `DELETE /api/posts/[id]` - Delete post
 
+#### Customer Stories
+- `GET /api/customerstories` - List all customer stories
+- `POST /api/customerstories` - Create new customer story
+- `GET /api/customerstories/[id]` - Get single customer story
+- `PUT /api/customerstories/[id]` - Update customer story
+- `DELETE /api/customerstories/[id]` - Delete customer story
+
 #### File Upload
-- `POST /api/upload` - Upload image to S3
+- `POST /api/upload` - Upload single image to S3
+- `POST /api/upload/multiple` - Upload multiple aspect ratios
+- `POST /api/upload/logo` - Upload logo to S3
 
 ### Query Parameters for Posts API
 - `page`: Page number for pagination
@@ -212,7 +289,26 @@ GET /api/posts?page=1&limit=10&status=PUBLISHED&search=javascript
 - `excerpt`: Auto-generated excerpt
 - `seoTitle`: SEO title
 - `seoDescription`: SEO description
-- `featuredImage`: Featured image URL
+- `featuredImage`: Featured image URL (relative path)
+- `status`: DRAFT, PUBLISHED, or ARCHIVED
+- `publishedAt`: Publication timestamp
+- `authorId`: Reference to user
+- `createdAt`: Creation timestamp
+- `updatedAt`: Last update timestamp
+
+### Customer Stories Table
+- `id`: Unique identifier
+- `title`: Story title
+- `slug`: URL slug (unique)
+- `content`: Story content (HTML)
+- `excerpt`: Auto-generated excerpt
+- `seoTitle`: SEO title
+- `seoDescription`: SEO description
+- `featuredImage`: Featured image URL (relative path)
+- `clientLogo`: Client logo URL (relative path)
+- `clientName`: Client company name
+- `industry`: Client industry
+- `results`: Key results/metrics
 - `status`: DRAFT, PUBLISHED, or ARCHIVED
 - `publishedAt`: Publication timestamp
 - `authorId`: Reference to user
@@ -231,6 +327,24 @@ GET /api/posts?page=1&limit=10&status=PUBLISHED&search=javascript
 2. Configure AWS S3 bucket with proper CORS settings
 3. Set up Redis instance (optional)
 4. Configure environment variables for production
+
+### Production Environment Variables
+```env
+# Production Database
+DATABASE_URL="postgresql://username:password@host:5432/database"
+
+# AWS S3 (Production)
+AWS_REGION="us-east-1"
+AWS_S3_BUCKET="your-production-s3-bucket"
+NEXT_PUBLIC_AWS_S3_BUCKET="your-production-s3-bucket"
+
+# NextAuth (Production)
+NEXTAUTH_SECRET="your-production-secret"
+NEXTAUTH_URL="https://yourdomain.com"
+
+# Redis (Production)
+REDIS_URL="redis://your-redis-host:6379"
+```
 
 ### Build and Deploy
 ```bash
@@ -272,7 +386,9 @@ npm start
 - Password hashing with bcrypt
 - CORS configuration
 - SQL injection prevention with Prisma
-- File upload validation
+- Secure file upload validation
+- S3 bucket name abstraction (not exposed to client)
+- Relative path storage for enhanced security
 - reCAPTCHA integration (planned)
 
 ## Development
@@ -285,6 +401,33 @@ npm start
 - `npm run db:migrate` - Run database migrations
 - `npm run db:generate` - Generate Prisma client
 - `npm run db:studio` - Open Prisma Studio
+- `npm run deploy` - Build, package, and deploy to S3
+
+### Deployment
+
+The project includes an automated deployment script that builds the application, creates a deployment package, and uploads it to S3.
+
+#### Quick Deployment
+```bash
+# Set your deployment bucket
+export DEPLOY_S3_BUCKET=your-deployment-bucket
+
+# Run deployment
+npm run deploy
+```
+
+#### Advanced Deployment
+```bash
+# With custom configuration
+node scripts/deploy.js --bucket my-bucket --prefix releases --profile production
+```
+
+The deployment script will:
+- Build the Next.js application
+- Create `si-cms-deploy.zip` with all necessary files
+- Upload to `s3://{bucket}/new-cms-beta/si-cms-deploy.zip`
+
+For detailed deployment documentation, see [scripts/README.md](scripts/README.md).
 
 ### Contributing
 1. Fork the repository
@@ -329,9 +472,18 @@ Error: Database connection failed
 ```
 Error: Upload failed
 ```
-- Verify AWS credentials
+- Verify AWS credentials or profile configuration
 - Check S3 bucket permissions
-- Ensure CORS is configured
+- Ensure CORS is configured properly
+- Verify NEXT_PUBLIC_AWS_S3_BUCKET is set
+
+#### Image Display Issues
+```
+Error: 404 on image URLs
+```
+- Ensure NEXT_PUBLIC_AWS_S3_BUCKET environment variable is set
+- Check that S3 bucket is publicly accessible or configure proper permissions
+- Verify image paths are correct
 
 #### Build Errors
 ```
@@ -354,4 +506,4 @@ For support and questions:
 
 ---
 
-**Simple CMS** - A streamlined solution for blog content management. 
+**Simple CMS** - A streamlined solution for blog content management with secure AWS S3 integration. 

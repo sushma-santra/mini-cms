@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
 
     const whereClause = user.role === 'ADMIN' ? {} : { authorId: user.id }
 

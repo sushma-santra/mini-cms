@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
 
     // Handle specific customer story request by slug
     if (slug) {
-      const customerStory = await prisma.CustomerStory.findUnique({
+      const customerStory = await prisma.customerStory.findUnique({
         where: { 
           ...where,
           slug 
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [customerStories, total] = await Promise.all([
-      prisma.CustomerStory.findMany({
+      prisma.customerStory.findMany({
         where,
         select: {
           id: true,
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.CustomerStory.count({ where }),
+      prisma.customerStory.count({ where }),
     ])
 
     return NextResponse.json({
@@ -219,7 +219,7 @@ export async function GET(request: NextRequest) {
 // POST /api/customerstories - Create new customer story
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     const body = await request.json()
     
     let validatedData;
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
     let slug = generateSlug(validatedData.title)
     
     // Ensure slug is unique
-    const existingStory = await prisma.CustomerStory.findUnique({ where: { slug } })
+    const existingStory = await prisma.customerStory.findUnique({ where: { slug } })
     if (existingStory) {
       slug = `${slug}-${Date.now()}`
     }
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const customerStory = await prisma.CustomerStory.create({
+      const customerStory = await prisma.customerStory.create({
         data: customerStoryData,
         include: {
           author: {
