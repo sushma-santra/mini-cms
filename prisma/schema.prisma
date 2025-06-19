@@ -76,6 +76,46 @@ model Tag {
   @@map("tags")
 }
 
+model EbookSubmission {
+  id               String   @id @default(cuid())
+  firstName        String   @db.VarChar(100)
+  lastName         String   @db.VarChar(100)
+  organisationName String   @db.VarChar(200)
+  country         String   @db.VarChar(100)
+  email           String   @db.VarChar(255)
+  privacyPolicy   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("ebook_submissions")
+}
+
+model NewsletterSubscription {
+  id        String   @id @default(cuid())
+  email     String   @unique @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("newsletter_subscriptions")
+}
+
+model ContactSubmission {
+  id                  String   @id @default(cuid())
+  firstName           String   @db.VarChar(100)
+  lastName            String   @db.VarChar(100)
+  organisation        String   @db.VarChar(200)
+  typeOfOrganisation  String   @db.VarChar(100)
+  country             String   @db.VarChar(100)
+  phoneNumber         String   @db.VarChar(50)
+  email               String   @db.VarChar(255)
+  message             String   @db.Text
+  privacyPolicy       Boolean? @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("contact_submissions")
+}
+
 enum UserRole {
   ADMIN
   AUTHOR
