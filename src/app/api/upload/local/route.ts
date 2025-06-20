@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { writeFile } from 'fs/promises'
-import path from 'path'
+import { uploadFile, getRelativePath } from '@/lib/s3'
 
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -17,7 +16,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type (images only)
+    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -26,8 +25,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024 // 5MB
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: 'File too large. Maximum size is 5MB.' },
@@ -40,30 +39,16 @@ export async function POST(request: NextRequest) {
     const randomString = Math.random().toString(36).substring(2, 15)
     const extension = file.name.split('.').pop()
     const fileName = `${timestamp}-${randomString}.${extension}`
-
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    // Save to public/uploads directory
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-    const filePath = path.join(uploadDir, fileName)
-
-    // Create uploads directory if it doesn't exist
-    const fs = require('fs')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
-
-    // Write file to disk
-    await writeFile(filePath, buffer)
-
-    // Return public URL
-    const imageUrl = `/uploads/${fileName}`
+    
+    // Upload to S3 and get relative path
+    const s3Key = `stg/assets/waf-images/uploads/images/${fileName}`
+    await uploadFile(file, s3Key)
+    const imageUrl = getRelativePath(s3Key)
 
     return NextResponse.json({
-      url: imageUrl,
-      fileName,
+      success: true,
+      originalUrl: imageUrl,
+      fileName: fileName,
       size: file.size,
       type: file.type,
     })

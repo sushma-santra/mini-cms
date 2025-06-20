@@ -67,7 +67,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     const body = await request.json()
     const data = updatePostSchema.parse(body)
 
@@ -205,7 +205,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
 
     // Check if post exists
     const existingPost = await prisma.post.findUnique({

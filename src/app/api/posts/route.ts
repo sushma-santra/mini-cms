@@ -5,12 +5,12 @@ import { generateSlug, generateExcerpt } from '@/lib/utils'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 
-const createPostSchema = z.object({
+const basePostSchema = z.object({
   title: z.string().min(1),
-  fullText: z.string().min(1, "Content is required"),
+  fullText: z.string().optional(),
   caption: z.string().optional(),
   description: z.string().optional(),
-  externalLinks: z.string().optional(),
+  externalLinks: z.string().url().optional(),
   seoTitle: z.string().optional(),
   seoDescription: z.string().optional(),
   featuredImage: z.string().nullable().optional(),
@@ -26,12 +26,28 @@ const createPostSchema = z.object({
   tagIds: z.array(z.string()).optional(),
 })
 
-const updatePostSchema = createPostSchema.partial()
+const createPostSchema = basePostSchema.refine(data => {
+  // Either fullText or externalLinks must be provided
+  return (data.fullText && data.fullText.trim().length > 0) || (data.externalLinks && data.externalLinks.trim().length > 0);
+}, {
+  message: "Either content or external link must be provided"
+})
+
+const updatePostSchema = basePostSchema.partial().refine(data => {
+  // For updates, if both fields are provided in the update, validate them
+  if (data.fullText !== undefined || data.externalLinks !== undefined) {
+    return (data.fullText && data.fullText.trim().length > 0) || (data.externalLinks && data.externalLinks.trim().length > 0);
+  }
+  // If neither field is being updated, skip validation
+  return true;
+}, {
+  message: "Either content or external link must be provided"
+});
 
 // GET /api/posts - Get all posts (role-based filtering)
 export async function GET(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -97,7 +113,7 @@ export async function GET(request: NextRequest) {
 // POST /api/posts - Create new post
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     const body = await request.json()
     
     const data = createPostSchema.parse(body)
@@ -112,7 +128,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate excerpt if not provided
-    const excerpt = generateExcerpt(data.fullText)
+    const excerpt = data.fullText ? generateExcerpt(data.fullText) : undefined;
 
     const postData: any = {
       title: data.title,

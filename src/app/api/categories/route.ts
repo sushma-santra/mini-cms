@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 // POST /api/categories - Create new category
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Admin access required' },

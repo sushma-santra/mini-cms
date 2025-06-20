@@ -14,7 +14,7 @@ const createUserSchema = z.object({
 // GET /api/users - Get all users (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     
     // Only admins can manage users
     if (user.role !== 'ADMIN') {
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 // POST /api/users - Create new user (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
     
     // Only admins can create users
     if (user.role !== 'ADMIN') {

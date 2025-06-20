@@ -69,3 +69,5 @@ logs
 # Cache
 .cache/
 .eslintcache
+
+*.zip

@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = requireAuth(request)
+    const user = await requireAuth(request)
 
     const whereClause = user.role === 'ADMIN' ? {} : { authorId: user.id }
 
@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
       totalPosts,
       publishedPosts,
       draftPosts,
-      recentPosts
+      recentPosts,
+      totalCustomerStories,
+      publishedCustomerStories,
+      draftCustomerStories
     ] = await Promise.all([
       prisma.post.count({ where: whereClause }),
       prisma.post.count({ where: { ...whereClause, status: 'PUBLISHED' } }),
@@ -28,6 +31,9 @@ export async function GET(request: NextRequest) {
         orderBy: { updatedAt: 'desc' },
         take: 5,
       }),
+      prisma.customerStory.count({ where: whereClause }),
+      prisma.customerStory.count({ where: { ...whereClause, status: 'PUBLISHED' } }),
+      prisma.customerStory.count({ where: { ...whereClause, status: 'DRAFT' } })
     ])
 
     // Get admin-only statistics
@@ -72,6 +78,9 @@ export async function GET(request: NextRequest) {
         totalPosts,
         publishedPosts,
         draftPosts,
+        totalCustomerStories,
+        publishedCustomerStories,
+        draftCustomerStories,
         totalCategories: user.role === 'ADMIN' ? totalCategories : null,
         totalTags: user.role === 'ADMIN' ? totalTags : null,
         totalUsers: user.role === 'ADMIN' ? totalUsers : null,
