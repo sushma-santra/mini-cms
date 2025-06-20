@@ -133,22 +133,32 @@ Example Request:
 
 ## reCAPTCHA Integration
 
-### Frontend Setup
-1. Add the reCAPTCHA script to your HTML:
+### Frontend Requirements
+The frontend team needs to:
+1. Get the reCAPTCHA site key from Google Console
+2. Add the reCAPTCHA script to your HTML:
 ```html
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 ```
 
-2. Add the reCAPTCHA widget to your form:
+3. Add the reCAPTCHA widget to your form:
 ```html
-<div class="g-recaptcha" data-sitekey="your_site_key_here"></div>
+<div class="g-recaptcha" data-sitekey="your_frontend_site_key_here"></div>
 ```
 
-3. When submitting the form, include the reCAPTCHA response:
+4. When submitting the form, include the reCAPTCHA response:
 ```javascript
 const captchaResponse = grecaptcha.getResponse();
 // Include captchaResponse in your submission data
 ```
+
+### Backend Configuration
+The backend only requires the reCAPTCHA secret key in the environment:
+```
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_here
+```
+
+This secret key is used server-side to verify the captcha tokens received from the frontend.
 
 ## Notes
 1. All string fields have maximum length restrictions
