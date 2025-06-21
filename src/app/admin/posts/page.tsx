@@ -3,10 +3,49 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import toast from 'react-hot-toast'
+
+interface Post {
+  id: string
+  title: string
+  status: 'DRAFT' | 'PUBLISHED'
+  updatedAt: string
+  author: {
+    name: string
+    email: string
+  }
+}
+
+interface ApiResponse {
+  success: boolean
+  message: string
+  data: Post[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    pages: number
+    hasNext: boolean
+    hasPrev: boolean
+  }
+  filters: {
+    status: string | null
+    search: string | null
+    role: string
+  }
+}
 
 export default function PostsPage() {
-  const [posts, setPosts] = useState([])
+  const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0,
+    hasNext: false,
+    hasPrev: false
+  })
   const { token } = useAuth()
 
   useEffect(() => {
@@ -15,17 +54,31 @@ export default function PostsPage() {
     }
   }, [token])
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (showToast = false) => {
     try {
       const response = await fetch('/api/posts', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       })
-      const data = await response.json()
-      setPosts(data.posts || [])
+      const data: ApiResponse = await response.json()
+      
+      if (data.success) {
+        setPosts(data.data)
+        setPagination(data.pagination)
+        if (showToast && data.message) {
+          toast.success(data.message)
+        }
+      } else {
+        if (showToast) {
+          toast.error(data.message || 'Failed to fetch posts')
+        }
+      }
     } catch (error) {
       console.error('Error fetching posts:', error)
+      if (showToast) {
+        toast.error('Failed to fetch posts')
+      }
     } finally {
       setLoading(false)
     }
@@ -44,19 +97,26 @@ export default function PostsPage() {
         },
       })
 
-      if (response.ok) {
-        fetchPosts() // Refresh the list
+      const data = await response.json()
+      
+      if (data.success) {
+        toast.success(data.message || 'Post deleted successfully')
+        fetchPosts(true) // Refresh the list and show toast
       } else {
-        throw new Error('Failed to delete post')
+        toast.error(data.message || 'Failed to delete post')
       }
     } catch (error) {
       console.error('Error deleting post:', error)
-      alert('Failed to delete post. Please try again.')
+      toast.error('Failed to delete post')
     }
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading posts...</div>
+      </div>
+    )
   }
 
   return (
@@ -65,7 +125,7 @@ export default function PostsPage() {
         <div>
           <h3 className="text-base font-medium text-gray-900">Posts</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Manage your blog posts.
+            Manage your blog posts. Total: {pagination.total}
           </p>
         </div>
         <Link
@@ -94,7 +154,7 @@ export default function PostsPage() {
       ) : (
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
-            {posts.map((post: any) => (
+            {posts.map((post) => (
               <li key={post.id} className="hover:bg-gray-50 transition-colors">
                 <div className="px-4 py-3 flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -142,6 +202,39 @@ export default function PostsPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {posts.length > 0 && (
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} posts
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => fetchPosts()}
+              disabled={!pagination.hasPrev}
+              className={`px-3 py-1 text-sm rounded-md ${
+                pagination.hasPrev
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => fetchPosts()}
+              disabled={!pagination.hasNext}
+              className={`px-3 py-1 text-sm rounded-md ${
+                pagination.hasNext
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

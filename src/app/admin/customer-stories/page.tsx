@@ -3,10 +3,46 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { toast } from 'react-hot-toast'
+
+interface CustomerStory {
+  id: string
+  title: string
+  slug: string
+  status: 'DRAFT' | 'PUBLISHED'
+  updatedAt: string
+  author: {
+    name: string
+    email: string
+  }
+}
+
+interface ApiResponse {
+  success: boolean
+  message: string
+  data: CustomerStory[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    pages: number
+    hasNext: boolean
+    hasPrev: boolean
+  }
+  filters: Record<string, unknown>
+}
 
 export default function CustomerStoriesPage() {
-  const [customerStories, setCustomerStories] = useState([])
+  const [customerStories, setCustomerStories] = useState<CustomerStory[]>([])
   const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0,
+    hasNext: false,
+    hasPrev: false
+  })
   const { token } = useAuth()
 
   useEffect(() => {
@@ -15,17 +51,31 @@ export default function CustomerStoriesPage() {
     }
   }, [token])
 
-  const fetchCustomerStories = async () => {
+  const fetchCustomerStories = async (showToast = false) => {
     try {
       const response = await fetch('/api/customerstories', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       })
-      const data = await response.json()
-      setCustomerStories(data.customerStories || [])
+      const data: ApiResponse = await response.json()
+      
+      if (data.success) {
+        setCustomerStories(data.data)
+        setPagination(data.pagination)
+        if (showToast && data.message) {
+          toast.success(data.message)
+        }
+      } else {
+        if (showToast) {
+          toast.error(data.message || 'Failed to fetch customer stories')
+        }
+      }
     } catch (error) {
       console.error('Error fetching customer stories:', error)
+      if (showToast) {
+        toast.error('Failed to fetch customer stories')
+      }
     } finally {
       setLoading(false)
     }
@@ -44,14 +94,17 @@ export default function CustomerStoriesPage() {
         },
       })
 
-      if (response.ok) {
-        fetchCustomerStories() // Refresh the list
+      const data = await response.json()
+      
+      if (data.success) {
+        toast.success(data.message || 'Customer story deleted successfully')
+        fetchCustomerStories(true) // Refresh the list and show toast
       } else {
-        throw new Error('Failed to delete customer story')
+        toast.error(data.message || 'Failed to delete customer story')
       }
     } catch (error) {
       console.error('Error deleting customer story:', error)
-      alert('Failed to delete customer story. Please try again.')
+      toast.error('Failed to delete customer story')
     }
   }
 
