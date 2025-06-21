@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, ListBucketsCommand } from '@aws-sdk/client-s3'
+import { fromInstanceMetadata, fromIni } from '@aws-sdk/credential-providers'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,12 +12,38 @@ export async function GET(request: NextRequest) {
       AWS_REGION: process.env.AWS_REGION || 'NOT_SET',
       NEXT_PUBLIC_AWS_S3_BUCKET: process.env.NEXT_PUBLIC_AWS_S3_BUCKET || 'NOT_SET',
       AWS_PROFILE: process.env.AWS_PROFILE || 'NOT_SET',
+      isAWS: process.env.isAWS || 'NOT_SET',
     }
 
-    // Test S3 connection
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION || 'us-east-1',
-    })
+    // Test S3 connection with environment-specific credentials
+    let s3Client: S3Client
+    if (process.env.isAWS === 'true') {
+      // EC2/ECS Production environment - use IAM roles
+      console.log("Using AWS IAM roles for credentials (EC2/ECS)")
+      s3Client = new S3Client({
+        region: process.env.AWS_REGION || "us-east-1",
+        credentials: fromInstanceMetadata(),
+      })
+    } else {
+      // Local development - use AWS CLI profile
+      console.log("Setting up AWS credentials for local development")
+      console.log("Using AWS credentials from AWS CLI profile")
+      console.log("AWS_PROFILE", process.env.AWS_PROFILE)
+      console.log("AWS_REGION", process.env.AWS_REGION)
+      try {
+        s3Client = new S3Client({
+          region: process.env.AWS_REGION || "us-east-1",
+          credentials: fromIni({
+            profile: process.env.AWS_PROFILE || "default"
+          }),
+        })
+      } catch (error) {
+        throw new Error(
+          "AWS credentials not found. Please configure AWS CLI with 'aws configure' command\n" +
+          "Error: " + error
+        )
+      }
+    }
 
     try {
       const command = new ListBucketsCommand({})

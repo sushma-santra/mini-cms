@@ -1,14 +1,37 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { fromInstanceMetadata, fromIni } from '@aws-sdk/credential-providers'
 
-// S3 Client configuration using AWS profiles
-// The AWS SDK will automatically use the default profile from ~/.aws/credentials
-// or you can specify a profile name via AWS_PROFILE environment variable
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
-  // Remove explicit credentials - AWS SDK will use profile credentials automatically
-  // This is more secure than using access keys in environment variables
-})
+let s3Client: S3Client
+
+// S3 Client configuration using environment-specific credentials
+if (process.env.isAWS === 'true') {
+  // EC2/ECS Production environment - use IAM roles
+  console.log("Using AWS IAM roles for credentials (EC2/ECS)")
+  s3Client = new S3Client({
+    region: process.env.AWS_REGION || "us-east-1",
+    credentials: fromInstanceMetadata(),
+  })
+} else {
+  // Local development - use AWS CLI profile
+  console.log("Setting up AWS credentials for local development")
+  console.log("Using AWS credentials from AWS CLI profile")
+  console.log("AWS_PROFILE", process.env.AWS_PROFILE)
+  console.log("AWS_REGION", process.env.AWS_REGION)
+  try {
+    s3Client = new S3Client({
+      region: process.env.AWS_REGION || "us-east-1",
+      credentials: fromIni({
+        profile: process.env.AWS_PROFILE || "default"
+      }),
+    })
+  } catch (error) {
+    throw new Error(
+      "AWS credentials not found. Please configure AWS CLI with 'aws configure' command\n" +
+      "Error: " + error
+    )
+  }
+}
 
 export const uploadFile = async (file: File, key: string): Promise<string> => {
   try {
