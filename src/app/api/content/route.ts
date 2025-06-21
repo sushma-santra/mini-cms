@@ -151,7 +151,6 @@ export async function GET(request: NextRequest) {
         title: content.title,
         slug: content.slug,
         fullText: (content as any).fullText,  // Use fullText field from database
-        excerpt: content.excerpt,
         caption: contentWithNewFields.caption || null,  // New field
         description: contentWithNewFields.description || null,  // New field
         externalLinks: contentWithNewFields.externalLinks || null,  // New field
@@ -308,7 +307,6 @@ function formatContentForList(content: any) {
     id: content.id,
     title: content.title,
     slug: content.slug,
-    excerpt: content.excerpt,
     fullText: (content as any).fullText,  // Use fullText field from database
     caption: contentWithNewFields.caption || null,  // New field
     description: contentWithNewFields.description || null,  // New field

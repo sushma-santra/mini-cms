@@ -35,9 +35,9 @@ export function formatDate(date: Date): string {
   }).format(date)
 }
 
-export function truncateText(text: string, maxLength: number): string {
+export function truncateText(text: string, maxLength: number = 160): string {
   if (text.length <= maxLength) return text
-  return text.substring(0, maxLength).trim() + '...'
+  return text.slice(0, maxLength).trim() + '...'
 }
 
 export function validateEmail(email: string): boolean {

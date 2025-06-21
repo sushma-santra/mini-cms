@@ -66,7 +66,6 @@ GET /api/content?cat=blogs,case-studies&totalContent=8
       "id": "cmc1qheaw0001af861yc8csy6",
       "title": "Australia star smashes record-equalling 13 sixes in backs-to-wall MLC century from No.6",
       "slug": "australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6",
-      "excerpt": "&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum,...",
       "fullText": "<p><span style=\"color: rgb(11, 117, 0);\">&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum, Washington skipper Maxwell elected to bat first against the LA Knight Riders...</span></p>",
       "caption": "Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.",
       "description": "<p>Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.</p>",
@@ -112,8 +111,7 @@ GET /api/content?cat=blogs,case-studies&totalContent=8
     "id": "cmc1qheaw0001af861yc8csy6",
     "title": "Australia star smashes record-equalling 13 sixes in backs-to-wall MLC century from No.6",
     "slug": "australia-star-smashes-record-equalling-13-sixes-in-backs-to-wall-mlc-century-from-no6",
-    "fullText": "<p><span style=\"color: rgb(11, 117, 0);\">&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum, Washington skipper Maxwell elected to bat first against the LA Knight Riders. Openers Mitchell Owen and Rachin Ravindra were dismissed in the first three overs...</span></p>",
-    "excerpt": "&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum,...",
+    "fullText": "<p><span style=\"color: rgb(11, 117, 0);\">&lt;h2&gt;Glenn Maxwell rescues Washington Freedom with century from No.6&lt;/h2&gt;\\r\\n&lt;p&gt;In the eighth game of the 2025 season at the Oakland Coliseum, Washington skipper Maxwell elected to bat first against the LA Knight Riders...</span></p>",
     "caption": "Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.",
     "description": "<p>Australia all-rounder Glenn Maxwell scored a stunning century for the Washington Freedom in Major League Cricket on June 17. Read more here.</p>",
     "externalLinks": "https://www.wisden.com/series/major-league-cricket-2025/cricket-news/australia-star-glenn-maxwell-smashes-13-sixes-in-backs-to-wall-mlc-century-from-no6",
@@ -382,7 +380,6 @@ async function safeApiCall(url) {
 | `id` | string | Unique content identifier | ✅ |
 | `title` | string | Content title | ✅ |
 | `slug` | string | URL-friendly identifier | ✅ |
-| `excerpt` | string | Brief description (auto-generated from fullText) | ✅ |
 | `fullText` | string | Full content body (rich HTML from editor) | ✅ |
 | `caption` | string | Short caption for the content | ❌ |
 | `description` | string | Rich HTML description (from visual editor) | ❌ |
