@@ -5,14 +5,10 @@ import { generateSlug, generateExcerpt } from '@/lib/utils'
 import { z } from 'zod'
 
 const updatePostSchema = z.object({
-  title: z.string().min(1).optional(),
-  fullText: z.string().min(1).optional(),
-  caption: z.string().optional(),
+  title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters").optional(),
+  fullText: z.string().min(1, "Content is required").optional(),
+  caption: z.string().max(500, "Caption must be less than 500 characters").optional(),
   description: z.string().optional(),
-  externalLinks: z.string().optional(),
-  seoTitle: z.string().optional(),
-  seoDescription: z.string().optional(),
-  featuredImage: z.string().nullable().optional(),
   images: z.array(z.object({
     url: z.string(),
     aspectRatio: z.string(),
@@ -20,9 +16,12 @@ const updatePostSchema = z.object({
     originalUrl: z.string().optional(),
     isExisting: z.boolean().optional()
   })).optional(),
+  categoryId: z.string().min(1, "Category is required").optional(),
+  tags: z.array(z.string()).optional(),
+  seoTitle: z.string().max(60, "SEO title must be less than 60 characters").optional(),
+  seoDescription: z.string().max(160, "SEO description must be less than 160 characters").optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
-  categoryId: z.string().optional(),
-  tagIds: z.array(z.string()).optional(),
+  externalLinks: z.string().optional(),
 })
 
 // GET /api/posts/[id] - Get single post
@@ -68,12 +67,15 @@ export async function PUT(
 ) {
   try {
     const user = await requireAuth(request)
+    const { id } = params
     const body = await request.json()
+
     const data = updatePostSchema.parse(body)
 
-    // Check if post exists
+    // Check if post exists and user has permission
     const existingPost = await prisma.post.findUnique({
-      where: { id: params.id },
+      where: { id },
+      select: { id: true, authorId: true, slug: true, title: true },
     })
 
     if (!existingPost) {
@@ -83,94 +85,82 @@ export async function PUT(
       )
     }
 
-    // Check if user can edit this post (author or admin)
-    if (existingPost.authorId !== user.id && user.role !== 'ADMIN') {
+    // Role-based access control
+    if (user.role === 'AUTHOR' && existingPost.authorId !== user.id) {
       return NextResponse.json(
-        { error: 'Forbidden' },
+        { error: 'Access denied' },
         { status: 403 }
       )
     }
 
     // Prepare update data
-    const updateData: any = { ...data }
-    delete updateData.tagIds // Remove tagIds from direct update data
-    
-    // Handle featuredImage field - explicitly clear if null
-    if (data.featuredImage === null) {
-      updateData.featuredImage = null
-    }
-    
-    // Handle images field properly - replace with current image state
-    if (data.images !== undefined) {
-      if (data.images === null || (Array.isArray(data.images) && data.images.length === 0)) {
-        // No images provided - clear the images field
-        updateData.images = []
-      } else {
-        // Separate existing images from new images
-        const existingImages = data.images.filter(img => img.isExisting)
-        const newImages = data.images.filter(img => !img.isExisting)
+    const updateData: any = {}
+
+    if (data.title) {
+      updateData.title = data.title
+      // Regenerate slug if title changed
+      if (data.title !== existingPost.title) {
+        let newSlug = generateSlug(data.title)
         
-        // The final images array should only contain:
-        // 1. Existing images that are still present in the frontend state
-        // 2. New images that were just uploaded
-        updateData.images = [
-          // Existing images (already in correct format)
-          ...existingImages.map(img => ({
-            url: img.url,
-            aspectRatio: img.aspectRatio,
-            baseFilename: img.baseFilename,
-            originalUrl: img.originalUrl  // Include original URL
-          })),
-          // New images (also in correct format)
-          ...newImages.map(img => ({
-            url: img.url,
-            aspectRatio: img.aspectRatio,
-            baseFilename: img.baseFilename,
-            originalUrl: img.originalUrl  // Include original URL
-          }))
-        ]
+        // Ensure slug is unique (excluding current post)
+        const slugExists = await prisma.post.findFirst({
+          where: { 
+            slug: newSlug, 
+            id: { not: id } 
+          }
+        })
+        
+        if (slugExists) {
+          newSlug = `${newSlug}-${Date.now()}`
+        }
+        
+        updateData.slug = newSlug
       }
     }
 
-    // Generate new slug if title changed
-    if (data.title && data.title !== existingPost.title) {
-      let slug = generateSlug(data.title)
-      
-      // Ensure slug is unique (exclude current post)
-      const slugExists = await prisma.post.findFirst({
-        where: { 
-          slug, 
-          id: { not: params.id } 
-        },
-      })
-      
-      if (slugExists) {
-        slug = `${slug}-${Date.now()}`
+    if (data.fullText !== undefined) updateData.fullText = data.fullText
+    if (data.caption !== undefined) updateData.caption = data.caption
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.seoTitle !== undefined) updateData.seoTitle = data.seoTitle
+    if (data.seoDescription !== undefined) updateData.seoDescription = data.seoDescription
+    if (data.externalLinks !== undefined) updateData.externalLinks = data.externalLinks
+    if (data.categoryId) updateData.categoryId = data.categoryId
+    
+    if (data.status) {
+      updateData.status = data.status
+      // Set publishedAt when publishing
+      if (data.status === 'PUBLISHED') {
+        updateData.publishedAt = new Date()
       }
-      
-      updateData.slug = slug
     }
 
-    // Generate new excerpt if fullText changed
-    if (data.fullText) {
-      updateData.excerpt = generateExcerpt(data.fullText)
+    // Handle tags if provided
+    if (data.tags) {
+      updateData.tags = {
+        set: [], // Clear existing connections
+        connect: data.tags.map(tagId => ({ id: tagId }))
+      }
     }
 
-    // Set publishedAt if status changed to PUBLISHED
-    if (data.status === 'PUBLISHED' && existingPost.status !== 'PUBLISHED') {
-      updateData.publishedAt = new Date()
+    // Handle images field - explicitly clear if empty array
+    if (Array.isArray(data.images)) {
+      if (data.images.length > 0) {
+        // Filter to only include new images that aren't marked as existing
+        const newImages = data.images.filter(img => !img.isExisting)
+        updateData.images = newImages.map(img => ({
+          url: img.url,
+          aspectRatio: img.aspectRatio,
+          baseFilename: img.baseFilename,
+          originalUrl: img.originalUrl
+        }))
+      } else {
+        updateData.images = []
+      }
     }
 
     const post = await prisma.post.update({
-      where: { id: params.id },
-      data: {
-        ...updateData,
-        ...(data.tagIds !== undefined && {
-          tags: {
-            set: data.tagIds.map(id => ({ id }))
-          }
-        })
-      },
+      where: { id },
+      data: updateData,
       include: {
         author: {
           select: { id: true, name: true, email: true },

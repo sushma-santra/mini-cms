@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const totalContent = searchParams.get('totalContent') ? parseInt(searchParams.get('totalContent')!) : null
-    const relatedContent = searchParams.get('relatedcontent') === 'true'  // Changed from featuredcontent
+    const relatedContent = searchParams.has('relatedcontent')  // Changed to check for parameter existence
 
     // Validate parameters
     if (page < 1) {
@@ -35,24 +35,23 @@ export async function GET(request: NextRequest) {
 
     // Handle specific content request by slug
     if (slug) {
-      if (!cat) {
-        return NextResponse.json({
-          success: false,
-          error: 'Category is required when requesting specific content',
-          code: 400
-        }, { status: 400 })
+      // Build where clause for slug query
+      const whereClause: any = {
+        slug,
+        status: 'PUBLISHED'
+      }
+
+      // Add category filter if provided (for backward compatibility)
+      if (cat) {
+        whereClause.category = {
+          name: {
+            in: cat.split(',').map(c => c.trim())
+          }
+        }
       }
 
       const content = await prisma.post.findFirst({
-        where: {
-          slug,  // Changed from 'id' to 'slug'
-          status: 'PUBLISHED',
-          category: {
-            name: {
-              in: cat.split(',').map(c => c.trim())
-            }
-          }
-        },
+        where: whereClause,
         include: {
           author: {
             select: {
@@ -150,29 +149,27 @@ export async function GET(request: NextRequest) {
         id: content.id,
         title: content.title,
         slug: content.slug,
-        fullText: (content as any).fullText,  // Use fullText field from database
-        excerpt: content.excerpt,
+        fullText: (content as any).fullText,  // Include fullText for single content requests
         caption: contentWithNewFields.caption || null,  // New field
         description: contentWithNewFields.description || null,  // New field
         externalLinks: contentWithNewFields.externalLinks || null,  // New field
         category: content.category?.name || 'uncategorized',
         publishedAt: content.publishedAt?.toISOString(),
-        featuredImage: content.featuredImage,
         images: content.images || [],
         author: {
           name: content.author.name,
-          bio: content.author.email, // You can modify this based on your user model
-          avatar: null // Add avatar field to user model if needed
+          bio: content.author.email,
+          avatar: null
         },
         tags: content.tags.map(tag => tag.name),
-        readTime: calculateReadTime((content as any).fullText),  // Use fullText field
+        readTime: calculateReadTime((content as any).fullText),
         taggedContent: moreContent.map(related => ({
           id: related.id,
           title: related.title,
           slug: related.slug,
           category: related.category?.name || 'uncategorized'
         })),
-        ...(relatedContent && { relatedContent: relatedContentData?.map(formatContentForList) || [] })  // Add related content if requested
+        ...(relatedContent && { relatedContent: relatedContentData?.map(formatContentForListWithoutFullText) || [] })
       }
 
       return NextResponse.json({
@@ -226,7 +223,7 @@ export async function GET(request: NextRequest) {
           take: totalContent
         })
 
-        const formattedContent = content.map(formatContentForList)
+        const formattedContent = content.map(formatContentForListWithoutFullText)
 
         return NextResponse.json({
           success: true,
@@ -270,7 +267,7 @@ export async function GET(request: NextRequest) {
       prisma.post.count({ where: whereClause })
     ])
 
-    const formattedContent = content.map(formatContentForList)
+    const formattedContent = content.map(formatContentForListWithoutFullText)
 
     const totalPages = Math.ceil(total / limit)
 
@@ -301,28 +298,48 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper function to format content for list responses
+// Helper function to format content for list responses without fullText
+function formatContentForListWithoutFullText(content: any) {
+  const contentWithNewFields = content as any  // Type assertion for new fields
+  return {
+    id: content.id,
+    title: content.title,
+    slug: content.slug,
+    caption: contentWithNewFields.caption || null,  // New field
+    description: contentWithNewFields.description || null,  // New field
+    externalLinks: contentWithNewFields.externalLinks || null,  // New field
+    category: content.category?.name || 'uncategorized',
+    publishedAt: content.publishedAt?.toISOString(),
+    images: content.images || [],
+    author: {
+      name: content.author.name,
+      avatar: null
+    },
+    tags: content.tags.map((tag: any) => tag.name),
+    readTime: calculateReadTime((content as any).fullText)
+  }
+}
+
+// Helper function to format content for list responses (with fullText - kept for backward compatibility)
 function formatContentForList(content: any) {
   const contentWithNewFields = content as any  // Type assertion for new fields
   return {
     id: content.id,
     title: content.title,
     slug: content.slug,
-    excerpt: content.excerpt,
-    fullText: (content as any).fullText,  // Use fullText field from database
+    fullText: (content as any).fullText,
     caption: contentWithNewFields.caption || null,  // New field
     description: contentWithNewFields.description || null,  // New field
     externalLinks: contentWithNewFields.externalLinks || null,  // New field
     category: content.category?.name || 'uncategorized',
     publishedAt: content.publishedAt?.toISOString(),
-    featuredImage: content.featuredImage,
     images: content.images || [],
     author: {
       name: content.author.name,
-      avatar: null // Add avatar field to user model if needed
+      avatar: null
     },
     tags: content.tags.map((tag: any) => tag.name),
-    readTime: calculateReadTime((content as any).fullText)  // Use fullText field
+    readTime: calculateReadTime((content as any).fullText)
   }
 }
 

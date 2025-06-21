@@ -26,11 +26,24 @@ const basePostSchema = z.object({
   tagIds: z.array(z.string()).optional(),
 })
 
-const createPostSchema = basePostSchema.refine(data => {
-  // Either fullText or externalLinks must be provided
-  return (data.fullText && data.fullText.trim().length > 0) || (data.externalLinks && data.externalLinks.trim().length > 0);
-}, {
-  message: "Either content or external link must be provided"
+const createPostSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  fullText: z.string().min(1, "Content is required"),
+  caption: z.string().max(500, "Caption must be less than 500 characters").optional(),
+  description: z.string().optional(),
+  images: z.array(z.object({
+    url: z.string(),
+    aspectRatio: z.string(),
+    baseFilename: z.string().optional(),
+    originalUrl: z.string().optional(),
+    isExisting: z.boolean().optional()
+  })).optional(),
+  categoryId: z.string().min(1, "Category is required"),
+  tags: z.array(z.string()).optional(),
+  seoTitle: z.string().max(60, "SEO title must be less than 60 characters").optional(),
+  seoDescription: z.string().max(160, "SEO description must be less than 160 characters").optional(),
+  status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
+  externalLinks: z.string().optional(),
 })
 
 const updatePostSchema = basePostSchema.partial().refine(data => {
@@ -116,10 +129,21 @@ export async function POST(request: NextRequest) {
     const user = await requireAuth(request)
     const body = await request.json()
     
-    const data = createPostSchema.parse(body)
+    let validatedData;
+    try {
+      validatedData = createPostSchema.parse(body)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          { error: 'Invalid input', details: error.errors },
+          { status: 400 }
+        )
+      }
+      throw error
+    }
 
     // Generate slug from title
-    let slug = generateSlug(data.title)
+    let slug = generateSlug(validatedData.title)
     
     // Ensure slug is unique
     const existingPost = await prisma.post.findUnique({ where: { slug } })
@@ -127,72 +151,47 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Date.now()}`
     }
 
-    // Generate excerpt if not provided
-    const excerpt = data.fullText ? generateExcerpt(data.fullText) : undefined;
-
-    const postData: any = {
-      title: data.title,
+    const postData = {
+      title: validatedData.title,
       slug,
-      fullText: data.fullText,
-      excerpt,
-      caption: data.caption,
-      description: data.description,
-      externalLinks: data.externalLinks,
-      seoTitle: data.seoTitle,
-      seoDescription: data.seoDescription,
-      featuredImage: data.featuredImage,
-      status: data.status,
-      categoryId: data.categoryId,
-      publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
+      fullText: validatedData.fullText,
+      caption: validatedData.caption,
+      description: validatedData.description,
+      seoTitle: validatedData.seoTitle,
+      seoDescription: validatedData.seoDescription,
+      status: validatedData.status,
+      externalLinks: validatedData.externalLinks,
+      publishedAt: validatedData.status === 'PUBLISHED' ? new Date() : null,
       authorId: user.id,
-    }
-
-    // Add images if provided - only include new images (not existing ones)
-    if (data.images && data.images.length > 0) {
-      // Filter to only include new images that aren't marked as existing
-      const newImages = data.images.filter(img => !img.isExisting)
-      if (newImages.length > 0) {
-        postData.images = newImages.map(img => ({
-          url: img.url,
-          aspectRatio: img.aspectRatio,
-          baseFilename: img.baseFilename,
-          originalUrl: img.originalUrl
-        }))
+      categoryId: validatedData.categoryId,
+      images: validatedData.images,
+      tags: {
+        connect: validatedData.tags?.map(tagId => ({ id: tagId })) || []
       }
     }
 
-    const post = await prisma.post.create({
-      data: {
-        ...postData,
-        ...(data.tagIds && data.tagIds.length > 0 && {
-          tags: {
-            connect: data.tagIds.map(id => ({ id }))
-          }
-        })
-      },
-      include: {
-        author: {
-          select: { id: true, name: true, email: true },
+    try {
+      const post = await prisma.post.create({
+        data: postData,
+        include: {
+          author: {
+            select: { id: true, name: true, email: true },
+          },
+          category: {
+            select: { id: true, name: true },
+          },
+          tags: true,
         },
-        category: {
-          select: { id: true, name: true },
-        },
-        tags: true,
-      },
-    })
-
-    return NextResponse.json(post, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      )
+      })
+      
+      return NextResponse.json(post, { status: 201 })
+    } catch (dbError) {
+      throw dbError
     }
-
+  } catch (error) {
     console.error('Create post error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
