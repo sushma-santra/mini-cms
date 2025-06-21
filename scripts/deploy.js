@@ -1,10 +1,86 @@
 #!/usr/bin/env node
 
+// Load environment variables from .env files
+require('dotenv').config({ path: '.env' });
+require('dotenv').config({ path: '.env.local' });
+
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { fromInstanceMetadata, fromIni } = require('@aws-sdk/credential-providers');
+
+// Enhanced logging utility
+const log = {
+  info: (message) => console.log(`ℹ️  ${message}`),
+  success: (message) => console.log(`✅ ${message}`),
+  error: (message) => console.log(`❌ ${message}`),
+  warning: (message) => console.log(`⚠️  ${message}`),
+  step: (message) => console.log(`\n🚀 ${message}`),
+  debug: (message, data) => console.log(`🔍 ${message}`, data || '')
+};
+
+// Load environment variables with fallbacks
+const loadEnvConfig = () => {
+  log.step('Loading environment configuration...');
+  
+  // Check for .env files
+  const envFiles = ['.env', '.env.local'];
+  envFiles.forEach(file => {
+    if (fs.existsSync(file)) {
+      log.info(`Found ${file} file`);
+    } else {
+      log.warning(`${file} file not found`);
+    }
+  });
+
+  // Set default values if not provided
+  process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+  process.env.AWS_PROFILE = process.env.AWS_PROFILE || 'default';
+  process.env.isAWS = process.env.isAWS || 'false';
+  
+  // Log loaded configuration
+  log.debug('Loaded environment configuration:', {
+    AWS_REGION: process.env.AWS_REGION,
+    AWS_PROFILE: process.env.AWS_PROFILE,
+    AWS_S3_BUCKET: process.env.AWS_S3_BUCKET || '(not set)',
+    DEPLOY_S3_BUCKET: process.env.DEPLOY_S3_BUCKET || '(not set)',
+    isAWS: process.env.isAWS
+  });
+};
+
+// Configuration validation
+const validateConfig = () => {
+  log.step('Validating configuration...');
+  
+  const requiredEnvVars = {
+    AWS_REGION: process.env.AWS_REGION,
+    AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
+    DEPLOY_S3_BUCKET: process.env.DEPLOY_S3_BUCKET,
+    AWS_PROFILE: process.env.AWS_PROFILE,
+    isAWS: process.env.isAWS
+  };
+
+  log.debug('Environment variables:', requiredEnvVars);
+
+  // Check for S3 bucket configuration
+  if (!process.env.DEPLOY_S3_BUCKET && !process.env.AWS_S3_BUCKET) {
+    throw new Error('S3 bucket not configured. Set DEPLOY_S3_BUCKET or AWS_S3_BUCKET environment variable.');
+  }
+
+  // Check AWS region
+  if (!process.env.AWS_REGION) {
+    log.warning('AWS_REGION not set, defaulting to us-east-1');
+  }
+
+  // Check AWS profile for local development
+  if (process.env.isAWS !== 'true' && !process.env.AWS_PROFILE) {
+    log.warning('AWS_PROFILE not set, defaulting to "default"');
+  }
+
+  log.success('Configuration validation completed');
+};
 
 // Configuration
 const config = {
@@ -27,18 +103,10 @@ const config = {
   ]
 };
 
-// Logging utility
-const log = {
-  info: (message) => console.log(`ℹ️  ${message}`),
-  success: (message) => console.log(`✅ ${message}`),
-  error: (message) => console.log(`❌ ${message}`),
-  warning: (message) => console.log(`⚠️  ${message}`),
-  step: (message) => console.log(`\n🚀 ${message}`)
-};
-
 // Error handling utility
 const handleError = (error, step) => {
   log.error(`${step} failed: ${error.message}`);
+  log.debug('Error details:', error);
   process.exit(1);
 };
 
@@ -112,14 +180,44 @@ const uploadToS3 = async () => {
   }
 
   try {
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION || 'us-east-1',
-    });
+    let s3Client;
+    if (process.env.isAWS === 'true') {
+      log.info("Using AWS IAM roles for credentials (EC2/ECS)")
+      s3Client = new S3Client({
+        region: process.env.AWS_REGION || "us-east-1",
+        credentials: fromInstanceMetadata(),
+      });
+    } else {
+      log.info("Setting up AWS credentials for local development")
+      log.debug("AWS Profile:", process.env.AWS_PROFILE || 'default')
+      log.debug("AWS Region:", process.env.AWS_REGION || 'us-east-1')
+      
+      try {
+        s3Client = new S3Client({
+          region: process.env.AWS_REGION || "us-east-1",
+          credentials: fromIni({
+            profile: process.env.AWS_PROFILE || "default"
+          }),
+        });
+        log.success("AWS credentials loaded successfully");
+      } catch (error) {
+        throw new Error(
+          "AWS credentials not found. Please configure AWS CLI with 'aws configure' command\n" +
+          "Error: " + error
+        );
+      }
+    }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const s3Key = `${config.s3KeyPrefix}/${config.zipFileName}`;
     
-    log.info(`Uploading to: s3://${config.s3Bucket}/${s3Key}`);
+    log.info(`Target S3 location: s3://${config.s3Bucket}/${s3Key}`);
+    log.debug('Upload configuration:', {
+      bucket: config.s3Bucket,
+      key: s3Key,
+      timestamp,
+      contentType: 'application/zip'
+    });
     
     const fileContent = fs.readFileSync(config.zipFileName);
     
@@ -163,12 +261,18 @@ const cleanup = () => {
 const deploy = async () => {
   const startTime = Date.now();
   
-  log.info('Starting deployment process...');
-  log.info(`S3 Bucket: ${config.s3Bucket || 'Not configured'}`);
-  log.info(`S3 Profile: ${config.s3Profile}`);
-  log.info(`Working Directory: ${process.cwd()}`);
+  log.step('Starting deployment process...');
   
   try {
+    // Load and validate configuration first
+    loadEnvConfig();
+    validateConfig();
+    
+    log.info('Deployment configuration:');
+    log.debug('S3 Bucket:', config.s3Bucket);
+    log.debug('S3 Profile:', config.s3Profile);
+    log.debug('Working Directory:', process.cwd());
+    
     buildApp();
     await createZip();
     await uploadToS3();

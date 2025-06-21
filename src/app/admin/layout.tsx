@@ -3,9 +3,13 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { AuthProvider, useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/auth-context'
 
-function AdminContent({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const { isAuthenticated, loading, logout, user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -178,17 +182,5 @@ function AdminContent({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
-  )
-}
-
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <AuthProvider>
-      <AdminContent>{children}</AdminContent>
-    </AuthProvider>
   )
 } 

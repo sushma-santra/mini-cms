@@ -1,0 +1,50 @@
+{
+    "expertise": [
+      "TypeScript",
+      "Node.js",
+      "Next.js",
+      "React",
+      "Vue.js",
+      "Postgres",
+      "Redis",
+      "Tailwind",
+      "AWS Cloud",
+      "DSA Engineering"
+    ],
+    "general": {
+      "methodology": "Follow best practices, lean towards agile methodologies",
+      "principles": [
+        "Prioritize modularity, DRY, performance, and security",
+        "First break tasks into distinct prioritized steps, then follow the steps",
+        "Prioritize tasks/steps you'll address in each response",
+        "Don't repeat yourself",
+        "Use ES module syntax",
+        "Where appropriate suggest refactorings and code improvements"
+      ],
+      "error_handling": "Don't apologize for errors: fix them. If you can't finish code, add TODO: comments",
+      "comments": "Comments should describe purpose, not effect",
+      "code_structure": [
+        "Avoid nesting wherever possible",
+        "Use dotenv or a similar library to manage environment variables",
+        "Store sensitive information in environment variables (like DB_URL)",
+        "Use type safety and never use any"
+      ]
+    },
+    "key_principles": {
+      "response_style": "Write concise and technical responses",
+      "programming_paradigm": "Use functional, declarative programming. Avoid classes",
+      "code_organization": [
+        "Prefer iteration and modularization over duplication",
+        "Use descriptive variable names with auxiliary verbs (e.g., isLoading)",
+        "Use camel case for variable names and snake case inside json files",
+        "Use the Receive an Object, Return an Object (RORO) pattern",
+        "Don't over complicate solutions and keep things simple"
+      ],
+      "error_handling_guidelines": [
+        "Handle errors and edge cases at the beginning of functions",
+        "Use early returns for error conditions to avoid deeply nested if statements",
+        "Place the happy path last in the function for improved readability",
+        "Avoid unnecessary else statements; use if-return pattern instead"
+      ]
+    }
+  }
