@@ -22,8 +22,19 @@ export const ASPECT_RATIOS: AspectRatioConfig[] = [
 export function generateBaseFilename(originalName?: string): string {
   const timestamp = Date.now()
   const randomString = Math.random().toString(36).substring(2, 15)
-  const extension = originalName?.split('.').pop() || 'jpg'
-  return `${timestamp}-${randomString}.${extension}`
+  
+  if (originalName) {
+    // Remove extension and special characters, replace spaces with hyphens
+    const cleanName = originalName
+      .split('.')[0]
+      .replace(/[^a-zA-Z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .toLowerCase()
+      .slice(0, 50) // Limit length
+    return `${cleanName}-${timestamp}-${randomString}`
+  }
+  
+  return `${timestamp}-${randomString}`
 }
 
 /**
@@ -39,8 +50,11 @@ export function getAspectRatioDirectory(aspectRatio: string): string {
  */
 export function getUploadPath(baseFilename: string, aspectRatio: string): string {
   const directory = getAspectRatioDirectory(aspectRatio)
-  const bucket = process.env.AWS_S3_BUCKET || 'your-bucket-name'
-  return `https://${bucket}.s3.amazonaws.com/stg/assets/waf-images/uploads/images/${directory}/${baseFilename}`
+  const domain = process.env.NEXT_PUBLIC_IMAGE_DOMAIN
+  if (!domain) {
+    throw new Error('NEXT_PUBLIC_IMAGE_DOMAIN environment variable is not set')
+  }
+  return `${domain}/assets/waf-images/uploads/images/${directory}/${baseFilename}`
 }
 
 /**

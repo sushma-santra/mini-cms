@@ -1,9 +1,9 @@
 // Client-side utility functions for handling image URLs
 
 /**
- * Converts a relative image path to a full S3 URL for display
+ * Converts a relative image path to a full URL for display
  * @param relativePath - The relative path from the API (e.g., "images/1-1/filename.jpg")
- * @returns Full S3 URL for the image
+ * @returns Full URL for the image
  */
 export const getImageUrl = (relativePath: string): string => {
   if (!relativePath) return ''
@@ -13,15 +13,12 @@ export const getImageUrl = (relativePath: string): string => {
     return relativePath
   }
   
-  // Construct full S3 URL from relative path
-  // Use environment variable for bucket name (should be set in .env.local)
-  const bucketName = process.env.NEXT_PUBLIC_AWS_S3_BUCKET
-  if (!bucketName) {
-    // Return relative path as fallback if environment variable is not set
-    return relativePath
+  const domain = process.env.NEXT_PUBLIC_IMAGE_DOMAIN
+  if (!domain) {
+    throw new Error('NEXT_PUBLIC_IMAGE_DOMAIN environment variable is not set')
   }
   
-  return `https://${bucketName}.s3.amazonaws.com/stg/assets/waf-images/uploads/${relativePath}`
+  return `${domain}/assets/waf-images/uploads/${relativePath}`
 }
 
 /**

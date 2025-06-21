@@ -4,8 +4,8 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**.amazonaws.com',
-      },
+        hostname: process.env.NEXT_PUBLIC_IMAGE_DOMAIN?.replace(/^https?:\/\//, '') || 'yourdomain.com',
+      }
     ],
   },
   env: {
@@ -18,6 +18,7 @@ const nextConfig = {
     RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    NEXT_PUBLIC_IMAGE_DOMAIN: process.env.NEXT_PUBLIC_IMAGE_DOMAIN,
   },
 }
 
