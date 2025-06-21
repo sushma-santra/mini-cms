@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 import { generateSlug, generateExcerpt } from '@/lib/utils'
 import { z } from 'zod'
+import { successResponse, errorResponse } from '@/lib/api-response'
 
 const updatePostSchema = z.object({
   title: z.string().min(1).optional(),
@@ -21,7 +22,7 @@ const updatePostSchema = z.object({
     isExisting: z.boolean().optional()
   })).optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
-  categoryId: z.string().optional(),
+  categoryId: z.string().nullable().optional(),
   tagIds: z.array(z.string()).optional(),
 })
 
@@ -45,19 +46,13 @@ export async function GET(
     })
 
     if (!post) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      )
+      return errorResponse('Post not found', 404)
     }
 
-    return NextResponse.json(post)
+    return successResponse(post, 'Post retrieved successfully')
   } catch (error) {
     console.error('Get post error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 }
 
@@ -68,109 +63,108 @@ export async function PUT(
 ) {
   try {
     const user = await requireAuth(request)
+    const { id } = params
     const body = await request.json()
-    const data = updatePostSchema.parse(body)
 
-    // Check if post exists
+    let data;
+    try {
+      data = updatePostSchema.parse(body)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return errorResponse('Invalid input', 400, { details: error.errors })
+      }
+      throw error
+    }
+
+    // Check if post exists and user has permission
     const existingPost = await prisma.post.findUnique({
-      where: { id: params.id },
+      where: { id },
+      select: { id: true, authorId: true, slug: true, title: true },
     })
 
     if (!existingPost) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      )
+      return errorResponse('Post not found', 404)
     }
 
-    // Check if user can edit this post (author or admin)
-    if (existingPost.authorId !== user.id && user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+    // Role-based access control
+    if (user.role === 'AUTHOR' && existingPost.authorId !== user.id) {
+      return errorResponse('Access denied', 403)
     }
 
     // Prepare update data
-    const updateData: any = { ...data }
-    delete updateData.tagIds // Remove tagIds from direct update data
-    
-    // Handle featuredImage field - explicitly clear if null
-    if (data.featuredImage === null) {
-      updateData.featuredImage = null
-    }
-    
-    // Handle images field properly - replace with current image state
-    if (data.images !== undefined) {
-      if (data.images === null || (Array.isArray(data.images) && data.images.length === 0)) {
-        // No images provided - clear the images field
-        updateData.images = []
-      } else {
-        // Separate existing images from new images
-        const existingImages = data.images.filter(img => img.isExisting)
-        const newImages = data.images.filter(img => !img.isExisting)
+    const updateData: any = {}
+
+    if (data.title) {
+      updateData.title = data.title
+      // Regenerate slug if title changed
+      if (data.title !== existingPost.title) {
+        let newSlug = generateSlug(data.title)
         
-        // The final images array should only contain:
-        // 1. Existing images that are still present in the frontend state
-        // 2. New images that were just uploaded
-        updateData.images = [
-          // Existing images (already in correct format)
-          ...existingImages.map(img => ({
-            url: img.url,
-            aspectRatio: img.aspectRatio,
-            baseFilename: img.baseFilename,
-            originalUrl: img.originalUrl  // Include original URL
-          })),
-          // New images (also in correct format)
-          ...newImages.map(img => ({
-            url: img.url,
-            aspectRatio: img.aspectRatio,
-            baseFilename: img.baseFilename,
-            originalUrl: img.originalUrl  // Include original URL
-          }))
-        ]
+        // Ensure slug is unique (excluding current post)
+        const slugExists = await prisma.post.findFirst({
+          where: { 
+            slug: newSlug, 
+            id: { not: id } 
+          }
+        })
+        
+        if (slugExists) {
+          newSlug = `${newSlug}-${Date.now()}`
+        }
+        
+        updateData.slug = newSlug
       }
     }
 
-    // Generate new slug if title changed
-    if (data.title && data.title !== existingPost.title) {
-      let slug = generateSlug(data.title)
-      
-      // Ensure slug is unique (exclude current post)
-      const slugExists = await prisma.post.findFirst({
-        where: { 
-          slug, 
-          id: { not: params.id } 
-        },
-      })
-      
-      if (slugExists) {
-        slug = `${slug}-${Date.now()}`
+    // Handle optional fields
+    if (data.fullText !== undefined) updateData.fullText = data.fullText
+    if (data.caption !== undefined) updateData.caption = data.caption
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.externalLinks !== undefined) updateData.externalLinks = data.externalLinks
+    if (data.seoTitle !== undefined) updateData.seoTitle = data.seoTitle
+    if (data.seoDescription !== undefined) updateData.seoDescription = data.seoDescription
+    if (data.featuredImage !== undefined) updateData.featuredImage = data.featuredImage
+    if (data.status !== undefined) {
+      updateData.status = data.status
+      if (data.status === 'PUBLISHED') {
+        updateData.publishedAt = new Date()
       }
-      
-      updateData.slug = slug
     }
 
-    // Generate new excerpt if fullText changed
-    if (data.fullText) {
-      updateData.excerpt = generateExcerpt(data.fullText)
+    // Handle category
+    if (data.categoryId !== undefined) {
+      if (data.categoryId) {
+        updateData.category = { connect: { id: data.categoryId } }
+      } else {
+        updateData.category = { disconnect: true }
+      }
     }
 
-    // Set publishedAt if status changed to PUBLISHED
-    if (data.status === 'PUBLISHED' && existingPost.status !== 'PUBLISHED') {
-      updateData.publishedAt = new Date()
+    // Handle tags
+    if (data.tagIds !== undefined) {
+      updateData.tags = {
+        set: data.tagIds.map(id => ({ id }))
+      }
+    }
+
+    // Handle images
+    if (data.images !== undefined) {
+      if (data.images.length > 0) {
+        const newImages = data.images.filter(img => !img.isExisting)
+        updateData.images = newImages.map(img => ({
+          url: img.url,
+          aspectRatio: img.aspectRatio,
+          baseFilename: img.baseFilename,
+          originalUrl: img.originalUrl
+        }))
+      } else {
+        updateData.images = []
+      }
     }
 
     const post = await prisma.post.update({
-      where: { id: params.id },
-      data: {
-        ...updateData,
-        ...(data.tagIds !== undefined && {
-          tags: {
-            set: data.tagIds.map(id => ({ id }))
-          }
-        })
-      },
+      where: { id },
+      data: updateData,
       include: {
         author: {
           select: { id: true, name: true, email: true },
@@ -182,19 +176,11 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(post)
+    return successResponse(post, 'Post updated successfully')
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      )
-    }
-
     console.error('Update post error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    return errorResponse(
+      error instanceof Error ? error.message : 'Internal server error'
     )
   }
 }
@@ -207,36 +193,28 @@ export async function DELETE(
   try {
     const user = await requireAuth(request)
 
-    // Check if post exists
-    const existingPost = await prisma.post.findUnique({
+    // Check if post exists and user has permission
+    const post = await prisma.post.findUnique({
       where: { id: params.id },
+      select: { authorId: true },
     })
 
-    if (!existingPost) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      )
+    if (!post) {
+      return errorResponse('Post not found', 404)
     }
 
-    // Check if user can delete this post (author or admin)
-    if (existingPost.authorId !== user.id && user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+    // Only allow authors to delete their own posts (admins can delete any)
+    if (user.role !== 'ADMIN' && post.authorId !== user.id) {
+      return errorResponse('Not authorized to delete this post', 403)
     }
 
     await prisma.post.delete({
       where: { id: params.id },
     })
 
-    return NextResponse.json({ message: 'Post deleted successfully' })
+    return successResponse(null, 'Post deleted successfully')
   } catch (error) {
     console.error('Delete post error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 } 

@@ -4,6 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PostEditor from '@/components/PostEditor'
 import { useAuth } from '@/lib/auth-context'
+import toast from 'react-hot-toast'
+
+interface ApiResponse {
+  success: boolean
+  message: string
+  data: {
+    id: string
+    title: string
+    status: string
+  }
+}
 
 export default function NewPostPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -22,15 +33,17 @@ export default function NewPostPage() {
         body: JSON.stringify(data),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create post')
-      }
+      const responseData: ApiResponse = await response.json()
 
-      router.push('/admin/posts')
+      if (responseData.success) {
+        toast.success(responseData.message)
+        router.push('/admin/posts')
+      } else {
+        toast.error(responseData.message)
+      }
     } catch (error) {
       console.error('Error creating post:', error)
-      alert('Failed to create post. Please try again.')
+      toast.error('Failed to create post')
     } finally {
       setIsLoading(false)
     }

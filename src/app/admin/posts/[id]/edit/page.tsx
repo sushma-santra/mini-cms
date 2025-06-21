@@ -5,9 +5,38 @@ import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import PostEditor from '@/components/PostEditor'
 import { useAuth } from '@/lib/auth-context'
+import toast from 'react-hot-toast'
+
+interface Post {
+  id: string
+  title: string
+  fullText: string
+  caption?: string
+  description?: string
+  externalLinks?: string
+  seoTitle?: string
+  seoDescription?: string
+  featuredImage?: string | null
+  images?: Array<{
+    url: string
+    aspectRatio: string
+    baseFilename?: string
+    originalUrl?: string
+    isExisting?: boolean
+  }>
+  status: 'DRAFT' | 'PUBLISHED'
+  categoryId?: string
+  tags?: Array<{ id: string; name: string }>
+}
+
+interface ApiResponse {
+  success: boolean
+  message: string
+  data: Post
+}
 
 export default function EditPostPage() {
-  const [post, setPost] = useState(null)
+  const [post, setPost] = useState<Post | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -29,15 +58,20 @@ export default function EditPostPage() {
         },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch post')
-      }
+      const data: ApiResponse = await response.json()
 
-      const data = await response.json()
-      setPost(data)
+      if (data.success) {
+        setPost(data.data)
+        if (data.message) {
+          toast.success(data.message)
+        }
+      } else {
+        toast.error(data.message)
+        router.push('/admin/posts')
+      }
     } catch (error) {
       console.error('Error fetching post:', error)
-      alert('Failed to load post. Redirecting to posts list.')
+      toast.error('Failed to load post')
       router.push('/admin/posts')
     } finally {
       setLoading(false)
@@ -56,15 +90,17 @@ export default function EditPostPage() {
         body: JSON.stringify(data),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update post')
-      }
+      const responseData: ApiResponse = await response.json()
 
-      router.push('/admin/posts')
+      if (responseData.success) {
+        toast.success(responseData.message)
+        router.push('/admin/posts')
+      } else {
+        toast.error(responseData.message)
+      }
     } catch (error) {
       console.error('Error updating post:', error)
-      alert('Failed to update post. Please try again.')
+      toast.error('Failed to update post')
     } finally {
       setIsLoading(false)
     }

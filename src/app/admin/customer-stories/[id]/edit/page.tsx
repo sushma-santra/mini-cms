@@ -1,13 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useParams } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import CustomerStoryEditor from '@/components/CustomerStoryEditor'
 import { useAuth } from '@/lib/auth-context'
+import { toast } from 'react-hot-toast'
+
+interface CustomerStory {
+  id: string
+  title: string
+  slug: string
+  status: string
+  // ... add other fields as needed
+}
+
+interface ApiResponse {
+  success: boolean
+  message: string
+  data: CustomerStory
+}
 
 export default function EditCustomerStoryPage() {
-  const [customerStory, setCustomerStory] = useState(null)
+  const [customerStory, setCustomerStory] = useState<CustomerStory | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -29,15 +43,17 @@ export default function EditCustomerStoryPage() {
         },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch customer story')
-      }
+      const data: ApiResponse = await response.json()
 
-      const data = await response.json()
-      setCustomerStory(data)
+      if (data.success) {
+        setCustomerStory(data.data)
+      } else {
+        toast.error(data.message)
+        router.push('/admin/customer-stories')
+      }
     } catch (error) {
       console.error('Error fetching customer story:', error)
-      alert('Failed to load customer story. Redirecting to customer stories list.')
+      toast.error('Failed to load customer story')
       router.push('/admin/customer-stories')
     } finally {
       setLoading(false)
@@ -56,15 +72,17 @@ export default function EditCustomerStoryPage() {
         body: JSON.stringify(data),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update customer story')
-      }
+      const responseData: ApiResponse = await response.json()
 
-      router.push('/admin/customer-stories')
+      if (responseData.success) {
+        toast.success(responseData.message)
+        router.push('/admin/customer-stories')
+      } else {
+        toast.error(responseData.message)
+      }
     } catch (error) {
       console.error('Error updating customer story:', error)
-      alert('Failed to update customer story. Please try again.')
+      toast.error('Failed to update customer story')
     } finally {
       setIsLoading(false)
     }

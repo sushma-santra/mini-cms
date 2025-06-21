@@ -80,7 +80,6 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
     initialData?.tags ? initialData.tags.map((tag: any) => tag.id) : []
   )
   const [editorMode, setEditorMode] = useState<'visual' | 'html'>('visual')
-  const [descriptionEditorMode, setDescriptionEditorMode] = useState<'visual' | 'html'>('visual')
   const { token } = useAuth()
 
   // Fetch categories
@@ -92,9 +91,17 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories')
+      const response = await fetch('/api/categories', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       const data = await response.json()
-      setCategories(data.categories || [])
+      if (data.success) {
+        setCategories(data.data || [])
+      } else {
+        console.error('Error fetching categories:', data.message)
+      }
     } catch (error) {
       console.error('Error fetching categories:', error)
     }
@@ -229,7 +236,7 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
         originalUrl: img.originalUrl,
         isExisting: img.isExisting || false
       })),
-      categoryId: categoryId || undefined,
+      categoryId: categoryId || null,
       tagIds: selectedTagIds,
     }
 
@@ -295,98 +302,19 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
           </div>
 
           {/* Description Field */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <p className="text-sm text-gray-500 mt-1">Brief description of your post (optional)</p>
-              </div>
-              <div className="flex rounded-lg border border-gray-300 bg-gray-50 p-1">
-                <button
-                  type="button"
-                  onClick={() => setDescriptionEditorMode('visual')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    descriptionEditorMode === 'visual'
-                      ? 'bg-white text-indigo-700 shadow-sm border border-gray-200'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Visual Editor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDescriptionEditorMode('html')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    descriptionEditorMode === 'html'
-                      ? 'bg-white text-indigo-700 shadow-sm border border-gray-200'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                  HTML Code
-                </button>
-              </div>
-            </div>
-
-            {descriptionEditorMode === 'visual' ? (
-              <div className="border border-gray-300 rounded-lg overflow-hidden bg-white description-editor">
-                <ReactQuill
-                  theme="snow"
-                  value={description || ''}
-                  onChange={setDescription}
-                  modules={{ toolbar: [['bold', 'italic', 'underline'], ['blockquote'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link'], ['clean']] }}
-                  formats={['bold', 'italic', 'underline', 'blockquote', 'list', 'bullet', 'link']}
-                  className="bg-white"
-                  placeholder="Brief description of your post (optional)"
-                />
-              </div>
-            ) : (
-              <div className="border border-gray-300 rounded-lg overflow-hidden">
-                <Editor
-                  height="150px"
-                  defaultLanguage="html"
-                  value={description}
-                  onChange={(value) => setDescription(value || '')}
-                  theme="vs-light"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: 'on',
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    tabSize: 2,
-                    wordWrap: 'on',
-                    formatOnPaste: true,
-                    formatOnType: true,
-                    bracketPairColorization: { enabled: true },
-                    autoClosingBrackets: 'always',
-                    autoClosingQuotes: 'always',
-                    folding: false,
-                    padding: { top: 12, bottom: 12 },
-                  }}
-                />
-              </div>
-            )}
-            
-            {descriptionEditorMode === 'html' && (
-              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex">
-                  <svg className="w-4 h-4 text-blue-400 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-blue-800">
-                    <span className="font-medium">HTML Mode:</span> You can write plain text or use HTML tags for formatting.
-                  </p>
-                </div>
-              </div>
-            )}
+          <div className="space-y-2">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <p className="text-sm text-gray-500">Brief description of your post (optional)</p>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
+              placeholder="Brief description of your post (optional)"
+            />
           </div>
 
           {/* External Links Field */}
