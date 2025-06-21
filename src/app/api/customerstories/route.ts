@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 import { generateSlug, generateExcerpt } from '@/lib/utils'
 import { z } from 'zod'
+import { successResponse, errorResponse, createPagination } from '@/lib/api-response'
 
 // Custom URL validator that accepts both absolute and relative URLs
 const urlSchema = z.string().refine(
@@ -104,10 +105,12 @@ export async function GET(request: NextRequest) {
 
     // For public access, only show published stories unless authenticated
     let where: any = { status: 'PUBLISHED' }
+    let userRole = 'PUBLIC'
     
     // If there's authentication, allow access to drafts based on role
     try {
       const user = await requireAuth(request)
+      userRole = user.role
       if (user.role === 'ADMIN') {
         // Admin can see all stories
         where = {}
@@ -119,7 +122,6 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       // No authentication or invalid token - continue with public access
-      // (only published stories will be shown)
     }
 
     // Add industry filter if provided
@@ -149,13 +151,10 @@ export async function GET(request: NextRequest) {
       })
 
       if (!customerStory) {
-        return NextResponse.json(
-          { error: 'Customer story not found' },
-          { status: 404 }
-        )
+        return errorResponse('Customer story not found', 404)
       }
 
-      return NextResponse.json(customerStory)
+      return successResponse(customerStory, 'Customer story retrieved successfully')
     }
 
     if (search) {
@@ -198,21 +197,23 @@ export async function GET(request: NextRequest) {
       prisma.customerStory.count({ where }),
     ])
 
-    return NextResponse.json({
+    const filters = {
+      status,
+      search,
+      industry,
+      solutions,
+      role: userRole
+    }
+
+    return successResponse(
       customerStories,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    })
+      'Customer stories retrieved successfully',
+      createPagination(page, limit, total),
+      filters
+    )
   } catch (error) {
     console.error('Get customer stories error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 }
 
@@ -227,10 +228,7 @@ export async function POST(request: NextRequest) {
       validatedData = createCustomerStorySchema.parse(body)
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return NextResponse.json(
-          { error: 'Invalid input', details: error.errors },
-          { status: 400 }
-        )
+        return errorResponse('Invalid input', 400)
       }
       throw error
     }
@@ -274,15 +272,14 @@ export async function POST(request: NextRequest) {
         },
       })
       
-      return NextResponse.json(customerStory, { status: 201 })
+      return successResponse(customerStory, 'Customer story created successfully')
     } catch (dbError) {
       throw dbError
     }
   } catch (error) {
     console.error('Create customer story error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+    return errorResponse(
+      error instanceof Error ? error.message : 'Unknown error'
     )
   }
 } 
