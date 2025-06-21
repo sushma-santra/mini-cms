@@ -451,12 +451,13 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
             <label htmlFor="description" className="block text-sm font-medium text-gray-700">
               Description
             </label>
+            <p className="text-sm text-gray-500">Brief description of the customer story (optional)</p>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors resize-none"
+              className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
               placeholder="Brief description of the customer story (optional)"
             />
           </div>
