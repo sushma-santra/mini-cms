@@ -124,6 +124,7 @@ export default function ImageCropper({ image, onCropComplete, onCancel }: ImageC
       }
     } catch (error) {
       console.error('Error cropping image:', error)
+      alert('Failed to crop image. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -143,6 +144,7 @@ export default function ImageCropper({ image, onCropComplete, onCancel }: ImageC
   const handleAspectRatioChange = (ratio: number | undefined, name: string) => {
     setAspectRatio(ratio || 1)
     setAspectRatioName(name)
+    setCrop({ x: 0, y: 0 }) // Reset crop position when changing aspect ratio
   }
 
   const isRatioCropped = (ratioName: string) => {

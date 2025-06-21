@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      originalUrl: imageUrl,
+      url: imageUrl,
       fileName: fileName,
       size: file.size,
       type: file.type,
