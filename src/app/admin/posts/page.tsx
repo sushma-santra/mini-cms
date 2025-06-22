@@ -14,6 +14,10 @@ interface Post {
     name: string
     email: string
   }
+  category?: {
+    id: string
+    name: string
+  }
 }
 
 interface ApiResponse {
@@ -33,6 +37,10 @@ interface ApiResponse {
     search: string | null
     role: string
   }
+}
+
+const formatCategoryName = (name: string): string => {
+  return name.replace(/-/g, ' ')
 }
 
 export default function PostsPage() {
@@ -174,6 +182,12 @@ export default function PostsPage() {
                     </div>
                     <div className="mt-1 flex items-center text-xs text-gray-500 space-x-2">
                       <span>{post.author?.name || 'Unknown Author'}</span>
+                      {post.category && (
+                        <>
+                          <span>•</span>
+                          <span>in {formatCategoryName(post.category.name)}</span>
+                        </>
+                      )}
                       <span>•</span>
                       <span>{new Date(post.updatedAt).toLocaleDateString()}</span>
                     </div>

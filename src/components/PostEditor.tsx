@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { useAuth } from '@/lib/auth-context'
 import MultipleImageUploader, { UploadedImage } from './MultipleImageUploader'
 import TagSelector from './TagSelector'
+import CategorySelector from './CategorySelector'
 
 // Dynamically import ReactQuill to avoid SSR issues
 const ReactQuill = dynamic(() => import('react-quill'), {
@@ -244,6 +245,11 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
     if (onSave) {
       await onSave(data)
     }
+  }
+
+  // Add the format function at the top of the file
+  const formatCategoryName = (name: string): string => {
+    return name.replace(/-/g, ' ')
   }
 
   return (
@@ -580,19 +586,19 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
               <h3 className="text-sm font-semibold text-gray-900 mb-4">Category and Tags</h3>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700">
                     Category
                   </label>
                   <select
                     id="category"
-                    value={categoryId || ''}
-                    onChange={(e) => setCategoryId(e.target.value || null)}
-                    className="block w-full px-4 py-3 text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="block w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
                   >
                     <option value="">Select a category</option>
-                    {categories.map((category) => (
+                    {categories.map((category: any) => (
                       <option key={category.id} value={category.id}>
-                        {category.name}
+                        {formatCategoryName(category.name)}
                       </option>
                     ))}
                   </select>

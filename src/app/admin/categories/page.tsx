@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import toast from 'react-hot-toast'
 
 interface Category {
   id: string
@@ -17,13 +16,18 @@ interface ApiResponse {
   data: Category[]
 }
 
+const formatCategoryName = (name: string): string => {
+  return name.replace(/-/g, ' ')
+}
+
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [newCategory, setNewCategory] = useState({ name: '', description: '' })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { token } = useAuth()
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [formData, setFormData] = useState({ name: '', description: '' })
+  const [error, setError] = useState('')
+  const { token, user } = useAuth()
 
   useEffect(() => {
     if (token) {
@@ -42,139 +46,196 @@ export default function CategoriesPage() {
       
       if (data.success) {
         setCategories(data.data)
-        if (showToast && data.message) {
-          toast.success(data.message)
-        }
-      } else {
-        if (showToast) {
-          toast.error(data.message)
-        }
       }
     } catch (error) {
       console.error('Error fetching categories:', error)
-      if (showToast) {
-        toast.error('Failed to fetch categories')
-      }
+      setError('Failed to fetch categories')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+  const handleEditCategory = (category: Category) => {
+    setFormData({
+      name: category.name,
+      description: category.description || ''
+    })
+    setEditingCategoryId(category.id)
+    setShowCreateForm(true)
+  }
 
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
     try {
-      const response = await fetch('/api/categories', {
-        method: 'POST',
+      const isEditing = editingCategoryId !== null
+      const url = isEditing ? `/api/categories/${editingCategoryId}` : '/api/categories'
+      const method = isEditing ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(newCategory),
+        body: JSON.stringify(formData),
       })
 
-      const data: ApiResponse = await response.json()
-
-      if (data.success) {
-        toast.success(data.message)
-        setNewCategory({ name: '', description: '' })
-        setShowCreateForm(false)
-        fetchCategories(true)
-      } else {
-        toast.error(data.message)
+      if (!response.ok) {
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} category`)
       }
+
+      resetForm()
+      fetchCategories()
     } catch (error) {
-      console.error('Error creating category:', error)
-      toast.error('Failed to create category')
-    } finally {
-      setIsSubmitting(false)
+      console.error(`Error ${editingCategoryId ? 'updating' : 'creating'} category:`, error)
+      setError(`Failed to ${editingCategoryId ? 'update' : 'create'} category`)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({ name: '', description: '' })
+    setEditingCategoryId(null)
+    setShowCreateForm(false)
+  }
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!confirm('Are you sure you want to delete this category?')) return
+
+    try {
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to delete category')
+      }
+
+      setCategories(categories.filter(cat => cat.id !== categoryId))
+    } catch (err: any) {
+      setError(err.message)
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading categories...</div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center text-gray-500 space-x-3">
+          <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Loading categories...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (user?.role !== 'ADMIN') {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">Access denied. Admin privileges required.</p>
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="max-w-6xl mx-auto">
+      {/* Page Header */}
       <div className="flex justify-between items-center border-b border-gray-200 pb-4 mb-4">
         <div>
           <h3 className="text-base font-medium text-gray-900">Categories</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Manage your blog categories.
+            Create and manage categories to organize your blog posts.
           </p>
         </div>
         <button
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => {
+            if (showCreateForm) {
+              resetForm()
+            } else {
+              setShowCreateForm(true)
+            }
+          }}
           className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          New Category
+          {showCreateForm ? 'Cancel' : 'New Category'}
         </button>
       </div>
 
+      {/* Create Category Form */}
       {showCreateForm && (
-        <div className="bg-white shadow sm:rounded-lg mb-6">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Create New Category
-            </h3>
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  id="name"
-                  value={newCategory.name}
-                  onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                  className="mt-1 block w-full shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 rounded-md"
-                  required
-                />
+        <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <h2 className="text-sm font-medium text-gray-900">{editingCategoryId ? 'Edit Category' : 'Create New Category'}</h2>
+          </div>
+          
+          <form onSubmit={handleCreateCategory} className="p-4">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="space-y-1">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-900">
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="block w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
+                    placeholder="e.g., News, Analysis, Match Reports"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-900">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={2}
+                    className="block w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors resize-none"
+                    placeholder="Brief description (optional)"
+                  />
+                </div>
               </div>
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  rows={3}
-                  value={newCategory.description}
-                  onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                  className="mt-1 block w-full shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 border border-gray-300 rounded-md"
-                />
-              </div>
+            </div>
+            
+            <div className="border-t border-gray-200 pt-4 mt-4">
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  onClick={() => resetForm()}
+                  className="inline-flex justify-center items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+                  className="inline-flex justify-center items-center px-3 py-1.5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Category'}
+                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {editingCategoryId ? 'Update Category' : 'Create Category'}
                 </button>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       )}
 
+      {/* Categories List */}
       {categories.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-gray-500">
@@ -196,7 +257,7 @@ export default function CategoriesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-indigo-600 truncate">
-                        {category.name}
+                        {formatCategoryName(category.name)}
                       </p>
                       <div className="ml-2 flex-shrink-0 flex">
                         <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -207,6 +268,26 @@ export default function CategoriesPage() {
                     <div className="mt-1 flex items-center text-xs text-gray-500 space-x-2">
                       <span>{category.description || 'No description'}</span>
                     </div>
+                  </div>
+                  <div className="ml-4 flex items-center space-x-3">
+                    <button
+                      onClick={() => handleEditCategory(category)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Edit category"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      className="text-gray-400 hover:text-red-600 transition-colors"
+                      title="Delete category"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </li>
