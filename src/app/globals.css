@@ -2,82 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
-  }
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-button px-4 py-2 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary-hover focus:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-secondary;
+  }
+
+  .input {
+    @apply w-full rounded-input border border-input bg-background px-3 py-2 text-sm transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .card {
+    @apply rounded-card bg-card p-6 shadow-card transition-shadow hover:shadow-hover;
+  }
+
+  .section {
+    @apply mb-section;
+  }
+
+  .element {
+    @apply mb-element;
   }
 }
 
 /* Custom styles for the WYSIWYG editor */
 .ql-editor {
-  min-height: 200px;
+  @apply min-h-[200px] text-foreground;
 }
 
 .ql-toolbar {
-  border-top: 1px solid #ccc;
-  border-left: 1px solid #ccc;
-  border-right: 1px solid #ccc;
+  @apply border border-input rounded-t-input bg-background;
 }
 
 .ql-container {
-  border-bottom: 1px solid #ccc;
-  border-left: 1px solid #ccc;
-  border-right: 1px solid #ccc;
+  @apply border border-t-0 border-input rounded-b-input;
 }
 
-/* Description editor styles using Tailwind classes */
+/* Description editor styles */
 .description-editor .ql-toolbar {
-  @apply bg-gray-50 border-gray-200;
+  @apply bg-secondary border-input;
 }
 
 .description-editor .ql-container {
@@ -89,48 +70,48 @@
 }
 
 .description-editor .ql-editor.ql-blank::before {
-  @apply italic text-gray-400;
+  @apply italic text-muted-foreground;
 }
 
 /* Enhanced Quill Editor Styles */
 .ql-editor blockquote {
-  @apply border-l-4 border-indigo-500 pl-4 py-2 my-4 bg-gray-50 italic text-gray-700 rounded-r-md;
+  @apply border-l-4 border-primary pl-4 py-2 my-4 bg-secondary italic text-foreground rounded-r-md;
 }
 
 .ql-editor .ql-code-block-container {
-  @apply bg-gray-100 rounded-md p-3 my-2 font-mono text-sm;
+  @apply bg-secondary rounded-input p-3 my-2 font-mono text-sm;
 }
 
 .ql-editor pre {
-  @apply bg-gray-900 text-gray-100 rounded-md p-4 my-4 overflow-x-auto;
+  @apply bg-secondary text-foreground rounded-input p-4 my-4 overflow-x-auto;
 }
 
 .ql-editor code {
-  @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm font-mono;
+  @apply bg-secondary text-foreground px-1 py-0.5 rounded-sm text-sm font-mono;
 }
 
 .ql-editor h1 {
-  @apply text-3xl font-bold my-4 text-gray-900;
+  @apply text-3xl font-bold my-4;
 }
 
 .ql-editor h2 {
-  @apply text-2xl font-bold my-3 text-gray-900;
+  @apply text-2xl font-bold my-3;
 }
 
 .ql-editor h3 {
-  @apply text-xl font-semibold my-3 text-gray-900;
+  @apply text-xl font-semibold my-3;
 }
 
 .ql-editor h4 {
-  @apply text-lg font-semibold my-2 text-gray-900;
+  @apply text-lg font-semibold my-2;
 }
 
 .ql-editor h5 {
-  @apply text-base font-semibold my-2 text-gray-900;
+  @apply text-base font-semibold my-2;
 }
 
 .ql-editor h6 {
-  @apply text-sm font-semibold my-2 text-gray-800;
+  @apply text-sm font-semibold my-2;
 }
 
 .ql-editor ul, .ql-editor ol {
@@ -142,25 +123,20 @@
 }
 
 .ql-editor a {
-  @apply text-indigo-600 hover:text-indigo-800 underline;
+  @apply text-primary hover:text-primary-hover underline;
 }
 
-.ql-editor .ql-size-small {
-  @apply text-sm;
-}
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .btn {
+    @apply px-3 py-1.5 text-sm;
+  }
 
-.ql-editor .ql-size-large {
-  @apply text-lg;
-}
+  .card {
+    @apply p-4;
+  }
 
-.ql-editor .ql-size-huge {
-  @apply text-xl;
-}
-
-.ql-editor .ql-font-serif {
-  @apply font-serif;
-}
-
-.ql-editor .ql-font-monospace {
-  @apply font-mono;
+  .ql-editor {
+    @apply text-sm;
+  }
 } 

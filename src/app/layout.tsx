@@ -1,9 +1,10 @@
 import './globals.css'
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import ClientProviders from '@/components/ClientProviders'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'SI CMS: Admin - Blog Management System',
@@ -17,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body>
         <ClientProviders>
           {children}
         </ClientProviders>
