@@ -101,12 +101,81 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const slug = searchParams.get('slug')
     const industry = searchParams.get('industry')
-    const solutions = searchParams.get('solutions')?.split(',').filter(Boolean) || []
-
-    // For public access, only show published stories unless authenticated
-    let where: any = { status: 'PUBLISHED' }
+    const solutions = searchParams.get('solutions')?.split(',').filter(Boolean)
     let userRole = 'PUBLIC'
-    
+
+    // Validate page and limit
+    if (page < 1 || limit < 1 || limit > 100) {
+      return successResponse(
+        [],
+        'Success',
+        createPagination(1, 10, 0),
+        { status, search, industry, solutions }
+      )
+    }
+
+    let where: any = {
+      status: 'PUBLISHED' // Only include published stories for public access
+    }
+
+    // Handle industry filter if valid
+    if (industry) {
+      try {
+        const validIndustry = z.enum([
+          'TEAM',
+          'BROADCASTERS_AND_OTT_PLATFORMS',
+          'PUBLISHERS',
+          'GAMING_OPERATORS',
+          'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
+          'DIGITAL_PLATFORMS',
+          'FAN_DATA_AND_CRM_CONSULTING',
+          'MARKETING_AND_COMMUNITY',
+          'GAMING_AND_FAN_LOYALTY',
+          'MANAGEMENT',
+          'VIDEO_PRODUCTION',
+          'SPORTS_DATA_SOLUTIONS'
+        ]).parse(industry)
+        where.industry = validIndustry
+      } catch (error) {
+        // Invalid industry - return empty result instead of error
+        return successResponse(
+          [],
+          'Success',
+          createPagination(page, limit, 0),
+          { status, search, industry, solutions }
+        )
+      }
+    }
+
+    // Handle solutions filter if valid
+    if (solutions && solutions.length > 0) {
+      try {
+        const validSolutions = z.array(z.enum([
+          'TEAM',
+          'BROADCASTERS_AND_OTT_PLATFORMS',
+          'PUBLISHERS',
+          'GAMING_OPERATORS',
+          'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
+          'DIGITAL_PLATFORMS',
+          'FAN_DATA_AND_CRM_CONSULTING',
+          'MARKETING_AND_COMMUNITY',
+          'GAMING_AND_FAN_LOYALTY',
+          'MANAGEMENT',
+          'VIDEO_PRODUCTION',
+          'SPORTS_DATA_SOLUTIONS'
+        ])).parse(solutions)
+        where.solutions = { hasEvery: validSolutions }
+      } catch (error) {
+        // Invalid solutions - return empty result instead of error
+        return successResponse(
+          [],
+          'Success',
+          createPagination(page, limit, 0),
+          { status, search, industry, solutions }
+        )
+      }
+    }
+
     // If there's authentication, allow access to drafts based on role
     try {
       const user = await requireAuth(request)
@@ -122,18 +191,6 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       // No authentication or invalid token - continue with public access
-    }
-
-    // Add industry filter if provided
-    if (industry) {
-      where.industry = industry
-    }
-
-    // Add solutions filter if provided
-    if (solutions.length > 0) {
-      where.solutions = {
-        hasSome: solutions
-      }
     }
 
     // Handle specific customer story request by slug
