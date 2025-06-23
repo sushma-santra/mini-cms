@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 import { generateSlug, generateExcerpt } from '@/lib/utils'
 import { z } from 'zod'
+import { successResponse, errorResponse } from '@/lib/api-response'
 
 const updatePostSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters").optional(),
@@ -44,19 +45,13 @@ export async function GET(
     })
 
     if (!post) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      )
+      return errorResponse('Post not found', 404)
     }
 
-    return NextResponse.json(post)
+    return successResponse(post, 'Post retrieved successfully')
   } catch (error) {
     console.error('Get post error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 }
 
@@ -79,10 +74,7 @@ export async function PUT(
     })
 
     if (!existingPost) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      )
+      return errorResponse('Post not found', 404)
     }
 
     // Role-based access control
@@ -172,19 +164,11 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(post)
+    return successResponse(post, 'Post updated successfully')
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      )
-    }
-
     console.error('Update post error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    return errorResponse(
+      error instanceof Error ? error.message : 'Internal server error'
     )
   }
 }
@@ -197,36 +181,28 @@ export async function DELETE(
   try {
     const user = await requireAuth(request)
 
-    // Check if post exists
-    const existingPost = await prisma.post.findUnique({
+    // Check if post exists and user has permission
+    const post = await prisma.post.findUnique({
       where: { id: params.id },
+      select: { authorId: true },
     })
 
-    if (!existingPost) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      )
+    if (!post) {
+      return errorResponse('Post not found', 404)
     }
 
-    // Check if user can delete this post (author or admin)
-    if (existingPost.authorId !== user.id && user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+    // Only allow authors to delete their own posts (admins can delete any)
+    if (user.role !== 'ADMIN' && post.authorId !== user.id) {
+      return errorResponse('Not authorized to delete this post', 403)
     }
 
     await prisma.post.delete({
       where: { id: params.id },
     })
 
-    return NextResponse.json({ message: 'Post deleted successfully' })
+    return successResponse(null, 'Post deleted successfully')
   } catch (error) {
     console.error('Delete post error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 } 

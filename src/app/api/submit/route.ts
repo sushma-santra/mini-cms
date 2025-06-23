@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { verifyRecaptcha } from '@/lib/recaptcha';
 import { submissionSchema } from '@/lib/form-validation';
 import { z } from 'zod';
+import { zohoAPI } from '@/lib/zoho-api';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -35,6 +37,15 @@ export async function POST(request: Request) {
             privacyPolicy: ebookData.privacy_policy,
           },
         });
+
+        // Push to Zoho CRM in background
+        zohoAPI.pushToZoho(ebookData, module_name)
+          .catch(error => {
+            logger.error('Failed to push ebook data to Zoho:', {
+              error: error.message,
+              data: ebookData
+            });
+          });
         break;
       }
 
@@ -45,6 +56,15 @@ export async function POST(request: Request) {
             email: newsletterData.email,
           },
         });
+
+        // Push to Zoho CRM in background
+        zohoAPI.pushToZoho(newsletterData, module_name)
+          .catch(error => {
+            logger.error('Failed to push newsletter data to Zoho:', {
+              error: error.message,
+              data: newsletterData
+            });
+          });
         break;
       }
 
@@ -63,25 +83,48 @@ export async function POST(request: Request) {
             privacyPolicy: contactData.privacy_policy,
           },
         });
+
+        // Push to Zoho CRM in background
+        zohoAPI.pushToZoho(contactData, module_name)
+          .catch(error => {
+            logger.error('Failed to push contact data to Zoho:', {
+              error: error.message,
+              data: contactData
+            });
+          });
         break;
       }
     }
 
-    return NextResponse.json(
-      { message: 'Submission successful' },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      success: true,
+      message: "Submission successful",
+      data: [],
+      pagination: {},
+      filters: {}
+    });
+
   } catch (error) {
+    logger.error('Form submission failed:', {
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        message: "Validation failed",
+        data: error.errors,
+        pagination: {},
+        filters: {}
+      }, { status: 400 });
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: "Internal server error",
+      data: [],
+      pagination: {},
+      filters: {}
+    }, { status: 500 });
   }
 } 

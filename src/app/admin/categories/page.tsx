@@ -3,11 +3,30 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 
+interface Category {
+  id: string
+  name: string
+  description?: string
+  posts: any[]
+}
+
+interface ApiResponse {
+  success: boolean
+  message: string
+  data: Category[]
+}
+
+const formatCategoryName = (name: string): string => {
+  return name.replace(/-/g, ' ')
+}
+
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<any[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [formData, setFormData] = useState({ name: '', description: '' })
+  const [error, setError] = useState('')
   const { token, user } = useAuth()
 
   useEffect(() => {
@@ -16,56 +35,45 @@ export default function CategoriesPage() {
     }
   }, [token])
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (showToast = false) => {
     try {
-      const response = await fetch('/api/categories')
-      const data = await response.json()
-      setCategories(data.categories || [])
+      const response = await fetch('/api/categories', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      const data: ApiResponse = await response.json()
+      
+      if (data.success) {
+        setCategories(data.data)
+      }
     } catch (error) {
       console.error('Error fetching categories:', error)
+      setError('Failed to fetch categories')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleEdit = (category: { name: string; description?: string }) => {
+  const handleEditCategory = (category: Category) => {
     setFormData({
       name: category.name,
       description: category.description || ''
     })
+    setEditingCategoryId(category.id)
     setShowCreateForm(true)
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) {
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete category')
-      }
-
-      fetchCategories()
-    } catch (error) {
-      console.error('Error deleting category:', error)
-      alert('Failed to delete category')
-    }
   }
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     
     try {
-      const response = await fetch('/api/categories', {
-        method: 'POST',
+      const isEditing = editingCategoryId !== null
+      const url = isEditing ? `/api/categories/${editingCategoryId}` : '/api/categories'
+      const method = isEditing ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -74,20 +82,57 @@ export default function CategoriesPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create category')
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} category`)
       }
 
-      setFormData({ name: '', description: '' })
-      setShowCreateForm(false)
+      resetForm()
       fetchCategories()
     } catch (error) {
-      console.error('Error creating category:', error)
-      alert('Failed to create category')
+      console.error(`Error ${editingCategoryId ? 'updating' : 'creating'} category:`, error)
+      setError(`Failed to ${editingCategoryId ? 'update' : 'create'} category`)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({ name: '', description: '' })
+    setEditingCategoryId(null)
+    setShowCreateForm(false)
+  }
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!confirm('Are you sure you want to delete this category?')) return
+
+    try {
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to delete category')
+      }
+
+      setCategories(categories.filter(cat => cat.id !== categoryId))
+    } catch (err: any) {
+      setError(err.message)
     }
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center text-gray-500 space-x-3">
+          <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Loading categories...</span>
+        </div>
+      </div>
+    )
   }
 
   if (user?.role !== 'ADMIN') {
@@ -105,11 +150,17 @@ export default function CategoriesPage() {
         <div>
           <h3 className="text-base font-medium text-gray-900">Categories</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Organize your blog posts with categories.
+            Create and manage categories to organize your blog posts.
           </p>
         </div>
         <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
+          onClick={() => {
+            if (showCreateForm) {
+              resetForm()
+            } else {
+              setShowCreateForm(true)
+            }
+          }}
           className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +174,7 @@ export default function CategoriesPage() {
       {showCreateForm && (
         <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden mb-4">
           <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-sm font-medium text-gray-900">Create New Category</h2>
+            <h2 className="text-sm font-medium text-gray-900">{editingCategoryId ? 'Edit Category' : 'Create New Category'}</h2>
           </div>
           
           <form onSubmit={handleCreateCategory} className="p-4">
@@ -139,7 +190,7 @@ export default function CategoriesPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="block w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
-                    placeholder="Enter category name"
+                    placeholder="e.g., News, Analysis, Match Reports"
                     required
                   />
                 </div>
@@ -164,7 +215,7 @@ export default function CategoriesPage() {
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={() => resetForm()}
                   className="inline-flex justify-center items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Cancel
@@ -176,7 +227,7 @@ export default function CategoriesPage() {
                   <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Create Category
+                  {editingCategoryId ? 'Update Category' : 'Create Category'}
                 </button>
               </div>
             </div>
@@ -200,13 +251,13 @@ export default function CategoriesPage() {
       ) : (
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
-            {categories.map((category: { id: string; name: string; description?: string; posts?: any[] }) => (
+            {categories.map((category) => (
               <li key={category.id} className="hover:bg-gray-50 transition-colors">
                 <div className="px-4 py-3 flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-indigo-600 truncate">
-                        {category.name}
+                        {formatCategoryName(category.name)}
                       </p>
                       <div className="ml-2 flex-shrink-0 flex">
                         <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -220,7 +271,7 @@ export default function CategoriesPage() {
                   </div>
                   <div className="ml-4 flex items-center space-x-3">
                     <button
-                      onClick={() => handleEdit(category)}
+                      onClick={() => handleEditCategory(category)}
                       className="text-gray-400 hover:text-gray-600 transition-colors"
                       title="Edit category"
                     >
@@ -229,7 +280,7 @@ export default function CategoriesPage() {
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleDelete(category.id)}
+                      onClick={() => handleDeleteCategory(category.id)}
                       className="text-gray-400 hover:text-red-600 transition-colors"
                       title="Delete category"
                     >

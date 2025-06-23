@@ -163,6 +163,7 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
     }
     return new Date().toISOString().split('T')[0]
   })
+  const [slug, setSlug] = useState(initialData?.slug || '')
   const [caption, setCaption] = useState(initialData?.caption || '')
   const [description, setDescription] = useState(initialData?.description || '')
   const [status, setStatus] = useState(initialData?.status || 'DRAFT')
@@ -243,6 +244,13 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
       .replace(/^-+|-+$/g, '')
       .trim()
   }
+
+  // Update slug when title changes, but only if slug hasn't been manually edited
+  useEffect(() => {
+    if (!initialData?.slug || slug === generateSlugFromTitle(title)) {
+      setSlug(generateSlugFromTitle(title))
+    }
+  }, [title, initialData?.slug])
 
   // Stats management
   const addStat = () => {
@@ -341,6 +349,7 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
     
     const data = {
       title,
+      slug,
       date: new Date(date).toISOString(),
       caption,
       description,
@@ -379,12 +388,30 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
     <div className="max-w-5xl mx-auto">
       <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-lg font-medium text-gray-900">
-            {initialData ? 'Edit Customer Story' : 'Create New Customer Story'}
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {initialData ? 'Update your customer story content and settings.' : 'Create a compelling customer success story.'}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-medium text-gray-900">
+                {initialData ? 'Edit Customer Story' : 'Create New Customer Story'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {initialData ? 'Update your customer story content and settings.' : 'Create a compelling customer success story.'}
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <label htmlFor="status" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Status:
+              </label>
+              <select
+                id="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="block w-40 px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors bg-white"
+              >
+                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED">Published</option>
+              </select>
+            </div>
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
@@ -404,17 +431,35 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
             />
           </div>
 
-          {/* Slug Preview */}
-          {title && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                URL Slug (Auto-generated)
-              </label>
-              <div className="px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-600">
-                {generateSlugFromTitle(title)}
-              </div>
+          {/* Slug Field */}
+          <div className="space-y-2">
+            <label htmlFor="slug" className="block text-sm font-medium text-gray-700">
+              URL Slug
+            </label>
+            <div className="flex items-center space-x-2">
+              <input
+                id="slug"
+                type="text"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, ''))}
+                className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
+                placeholder="custom-url-slug"
+              />
+              <button
+                type="button"
+                onClick={() => setSlug(generateSlugFromTitle(title))}
+                className="px-4 py-3 text-sm text-gray-600 hover:text-gray-900 focus:outline-none"
+                title="Reset to auto-generated slug"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
             </div>
-          )}
+            <p className="text-sm text-gray-500">
+              Customize the URL slug or leave empty to auto-generate from title
+            </p>
+          </div>
 
           {/* Date Field */}
           <div className="space-y-2">
@@ -451,12 +496,13 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
             <label htmlFor="description" className="block text-sm font-medium text-gray-700">
               Description
             </label>
+            <p className="text-sm text-gray-500">Brief description of the customer story (optional)</p>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors resize-none"
+              className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
               placeholder="Brief description of the customer story (optional)"
             />
           </div>
@@ -664,29 +710,6 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
                     placeholder="Brief description that appears in search results"
                   />
                   <p className="text-xs text-gray-500">Recommended: 150-160 characters</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Story Settings */}
-          <div className="space-y-6">
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Story Settings</h3>
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                    Publication Status
-                  </label>
-                  <select
-                    id="status"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="block w-full px-4 py-3 text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
-                  >
-                    <option value="DRAFT">Draft - Save for later</option>
-                    <option value="PUBLISHED">Published - Make live</option>
-                  </select>
                 </div>
               </div>
             </div>

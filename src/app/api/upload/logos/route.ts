@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { uploadBuffer, getS3LogoKey } from '@/lib/s3'
+import { uploadBuffer, getS3LogoKey, getRelativePath } from '@/lib/s3'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml', 'image/webp']
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
 
         // Upload to S3
         const s3Key = getS3LogoKey(filename)
-        const url = await uploadBuffer(buffer, s3Key, file.type)
+        await uploadBuffer(buffer, s3Key, file.type)
+        const url = getRelativePath(s3Key)
 
         uploads.push({
           url,

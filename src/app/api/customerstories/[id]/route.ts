@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 import { generateSlug } from '@/lib/utils'
 import { z } from 'zod'
+import { successResponse, errorResponse } from '@/lib/api-response'
 
 const updateCustomerStorySchema = z.object({
   title: z.string().min(1).optional(),
@@ -74,7 +75,27 @@ export async function GET(
 
     const customerStory = await prisma.customerStory.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        date: true,
+        caption: true,
+        description: true,
+        mediaGallery: true,
+        stats: true,
+        contentSections: true,
+        seoTitle: true,
+        seoDescription: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        authorId: true,
+        externalLink: true,
+        industry: true,
+        solutions: true,
+        clientLogos: true,
         author: {
           select: { id: true, name: true, email: true },
         },
@@ -82,27 +103,18 @@ export async function GET(
     })
 
     if (!customerStory) {
-      return NextResponse.json(
-        { error: 'Customer story not found' },
-        { status: 404 }
-      )
+      return errorResponse('Customer story not found', 404)
     }
 
     // Role-based access control
     if (user.role === 'AUTHOR' && customerStory.authorId !== user.id) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
+      return errorResponse('Access denied', 403)
     }
 
-    return NextResponse.json(customerStory)
+    return successResponse(customerStory, 'Customer story retrieved successfully')
   } catch (error) {
     console.error('Get customer story error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 }
 
@@ -116,7 +128,15 @@ export async function PUT(
     const { id } = params
     const body = await request.json()
 
-    const data = updateCustomerStorySchema.parse(body)
+    let data;
+    try {
+      data = updateCustomerStorySchema.parse(body)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return errorResponse('Invalid input', 400, { details: error.errors })
+      }
+      throw error
+    }
 
     // Check if customer story exists and user has permission
     const existingStory = await prisma.customerStory.findUnique({
@@ -125,18 +145,12 @@ export async function PUT(
     })
 
     if (!existingStory) {
-      return NextResponse.json(
-        { error: 'Customer story not found' },
-        { status: 404 }
-      )
+      return errorResponse('Customer story not found', 404)
     }
 
     // Role-based access control
     if (user.role === 'AUTHOR' && existingStory.authorId !== user.id) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
+      return errorResponse('Access denied', 403)
     }
 
     // Prepare update data
@@ -229,26 +243,38 @@ export async function PUT(
     const customerStory = await prisma.customerStory.update({
       where: { id },
       data: updateData,
-      include: {
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        date: true,
+        caption: true,
+        description: true,
+        mediaGallery: true,
+        stats: true,
+        contentSections: true,
+        seoTitle: true,
+        seoDescription: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        authorId: true,
+        externalLink: true,
+        industry: true,
+        solutions: true,
+        clientLogos: true,
         author: {
           select: { id: true, name: true, email: true },
         },
       },
     })
 
-    return NextResponse.json(customerStory)
+    return successResponse(customerStory, 'Customer story updated successfully')
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
-        { status: 400 }
-      )
-    }
-
     console.error('Update customer story error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    return errorResponse(
+      error instanceof Error ? error.message : 'Internal server error'
     )
   }
 }

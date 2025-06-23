@@ -11,7 +11,8 @@ export interface UploadedImage {
   url: string
   aspectRatio: string
   baseFilename?: string
-  originalUrl?: string  // New: URL to original uncropped image
+  originalUrl?: string  // URL to original uncropped image
+  originalName?: string // Original file name
   file?: File
   isExisting?: boolean  // Track if this is an existing image vs newly uploaded
 }
@@ -34,6 +35,7 @@ export default function MultipleImageUploader({
   const [editingImageSet, setEditingImageSet] = useState<string | null>(null)
   const [editingMode, setEditingMode] = useState<'new' | 'replace' | 'selective'>('new')  // New: track editing mode
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set())
+  const [originalFileName, setOriginalFileName] = useState<string | null>(null)  // Store original file name
   const fileInputRef = useRef<HTMLInputElement>(null)
   const editFileInputRef = useRef<HTMLInputElement>(null)
   const { token, user, isAuthenticated } = useAuth()
@@ -42,6 +44,7 @@ export default function MultipleImageUploader({
     const file = event.target.files?.[0]
     if (file) {
       setCurrentImage(file)
+      setOriginalFileName(file.name)  // Store the original file name
       setCurrentImageUrl(null)  // Clear existing image URL
       setEditingMode('new')  // Set mode to new upload
       setShowCropper(true)
@@ -53,6 +56,7 @@ export default function MultipleImageUploader({
     const file = event.target.files?.[0]
     if (file && editingImageSet) {
       setCurrentImage(file)
+      setOriginalFileName(file.name)  // Store the original file name
       setCurrentImageUrl(null)  // New upload, clear existing URL
       setEditingMode('replace')  // Set mode to replace with new file
       setShowCropper(true)
@@ -72,11 +76,13 @@ export default function MultipleImageUploader({
       if (originalUrl) {
         setCurrentImageUrl(originalUrl)  // Use original uncropped image
         setCurrentImage(null)  // Clear file since we're using URL
+        setOriginalFileName(imageGroup[0].originalName || null)  // Store original name if available
         setShowCropper(true)
       } else {
         // Fallback: if no original URL, use the first cropped image (legacy behavior)
         setCurrentImageUrl(imageGroup[0].url)
         setCurrentImage(null)
+        setOriginalFileName(imageGroup[0].originalName || null)  // Store original name if available
         setShowCropper(true)
       }
     }
@@ -163,6 +169,7 @@ export default function MultipleImageUploader({
             aspectRatio: upload.aspectRatio,
             baseFilename: baseFilename,
             originalUrl: originalUrl,
+            originalName: originalFileName || upload.originalName, // Use stored original name
             isExisting: true  // Mark as existing since we're updating existing images
           })
         })
@@ -195,9 +202,9 @@ export default function MultipleImageUploader({
         
         // Force a re-render by updating the expanded sets to trigger UI refresh
         setExpandedSets(prev => new Set([...Array.from(prev), editingImageSet]))
-      } else if (editingMode === 'replace' || editingMode === 'new') {
+      } else {
         // Full replacement or new upload - existing behavior
-        const baseFilename = editingImageSet || generateBaseFilename()
+        const baseFilename = editingImageSet || (currentImage ? generateBaseFilename(currentImage.name) : generateBaseFilename())
         
         // Create FormData for multiple upload
         const formData = new FormData()
@@ -240,6 +247,7 @@ export default function MultipleImageUploader({
           aspectRatio: upload.aspectRatio,
           baseFilename: sharedBaseFilename,
           originalUrl: result.originalUrl,  // Include original URL from API response
+          originalName: originalFileName || upload.originalName, // Use stored original name
           isExisting: false  // Mark as new images
         }))
 
@@ -263,6 +271,7 @@ export default function MultipleImageUploader({
       setCurrentImageUrl(null)
       setEditingImageSet(null)
       setEditingMode('new')  // Reset to default mode
+      setOriginalFileName(null)  // Reset original file name
       
       // Reset file inputs
       if (fileInputRef.current) {

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
-import { generateSlug, generateExcerpt } from '@/lib/utils'
+import { generateSlug } from '@/lib/utils'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
+import { successResponse, errorResponse, createPagination } from '@/lib/api-response'
 
 const basePostSchema = z.object({
   title: z.string().min(1),
@@ -68,15 +69,12 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') as 'DRAFT' | 'PUBLISHED' | null
     const search = searchParams.get('search')
 
-    const skip = (page - 1) * limit
-
     const where: any = {}
     
     // Apply role-based filtering
     if (user.role === 'AUTHOR') {
       where.authorId = user.id
     }
-    // ADMIN users can see all posts, so no additional filtering needed
     
     if (status) where.status = status
     if (search) {
@@ -99,27 +97,27 @@ export async function GET(request: NextRequest) {
           tags: true,
         },
         orderBy: { updatedAt: 'desc' },
-        skip,
+        skip: (page - 1) * limit,
         take: limit,
       }),
       prisma.post.count({ where }),
     ])
 
-    return NextResponse.json({
+    const filters = {
+      status,
+      search,
+      role: user.role
+    }
+
+    return successResponse(
       posts,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    })
+      'Posts retrieved successfully',
+      createPagination(page, limit, total),
+      filters
+    )
   } catch (error) {
     console.error('Get posts error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 }
 
@@ -151,22 +149,31 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Date.now()}`
     }
 
-    const postData = {
+    const postData: any = {
       title: validatedData.title,
       slug,
       fullText: validatedData.fullText,
       caption: validatedData.caption,
       description: validatedData.description,
+      externalLinks: validatedData.externalLinks,
       seoTitle: validatedData.seoTitle,
       seoDescription: validatedData.seoDescription,
       status: validatedData.status,
-      externalLinks: validatedData.externalLinks,
+      categoryId: validatedData.categoryId,
       publishedAt: validatedData.status === 'PUBLISHED' ? new Date() : null,
       authorId: user.id,
-      categoryId: validatedData.categoryId,
-      images: validatedData.images,
-      tags: {
-        connect: validatedData.tags?.map(tagId => ({ id: tagId })) || []
+    }
+
+    // Add images if provided - only include new images (not existing ones)
+    if (validatedData.images && validatedData.images.length > 0) {
+      const newImages = validatedData.images.filter(img => !img.isExisting)
+      if (newImages.length > 0) {
+        postData.images = newImages.map(img => ({
+          url: img.url,
+          aspectRatio: img.aspectRatio,
+          baseFilename: img.baseFilename,
+          originalUrl: img.originalUrl
+        }))
       }
     }
 
@@ -190,9 +197,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Create post error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 } 

@@ -27,6 +27,14 @@ interface DashboardStats {
   }>
 }
 
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString()
+}
+
+const formatCategoryName = (name: string): string => {
+  return name.replace(/-/g, ' ')
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalPosts: 0,
@@ -75,14 +83,6 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
   }
 
   if (loading) {
@@ -406,7 +406,7 @@ export default function AdminDashboard() {
                         {post.category && (
                           <>
                             <span>•</span>
-                            <span>in {post.category.name}</span>
+                            <span>in {formatCategoryName(post.category.name)}</span>
                           </>
                         )}
                         <span>•</span>
