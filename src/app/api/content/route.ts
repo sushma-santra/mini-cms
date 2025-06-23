@@ -35,23 +35,17 @@ export async function GET(request: NextRequest) {
 
     // Handle specific content request by slug
     if (slug) {
-      if (!cat) {
-        return NextResponse.json({
-          success: false,
-          error: 'Category is required when requesting specific content',
-          code: 400
-        }, { status: 400 })
-      }
-
       const content = await prisma.post.findFirst({
         where: {
           slug,  // Changed from 'id' to 'slug'
           status: 'PUBLISHED',
-          category: {
-            name: {
-              in: cat.split(',').map(c => c.trim())
+          ...(cat && {
+            category: {
+              name: {
+                in: cat.split(',').map(c => c.trim())
+              }
             }
-          }
+          })
         },
         include: {
           author: {
