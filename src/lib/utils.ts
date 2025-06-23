@@ -59,4 +59,8 @@ export function extractTextFromHtml(html: string): string {
 export function generateExcerpt(content: string, maxLength: number = 160): string {
   const text = extractTextFromHtml(content)
   return truncateText(text, maxLength)
+}
+
+export function classNames(...classes: string[]) {
+  return classes.filter(Boolean).join(' ')
 } 

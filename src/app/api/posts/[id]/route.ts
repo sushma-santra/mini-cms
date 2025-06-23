@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
-import { generateSlug, generateExcerpt } from '@/lib/utils'
+import { generateSlug } from '@/lib/utils'
 import { z } from 'zod'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
