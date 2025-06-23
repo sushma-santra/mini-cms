@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 import { generateSlug } from '@/lib/utils'
@@ -6,14 +6,10 @@ import { z } from 'zod'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
 const updatePostSchema = z.object({
-  title: z.string().min(1).optional(),
-  fullText: z.string().min(1).optional(),
-  caption: z.string().optional(),
+  title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters").optional(),
+  fullText: z.string().min(1, "Content is required").optional(),
+  caption: z.string().max(500, "Caption must be less than 500 characters").optional(),
   description: z.string().optional(),
-  externalLinks: z.string().optional(),
-  seoTitle: z.string().optional(),
-  seoDescription: z.string().optional(),
-  featuredImage: z.string().nullable().optional(),
   images: z.array(z.object({
     url: z.string(),
     aspectRatio: z.string(),
@@ -21,9 +17,12 @@ const updatePostSchema = z.object({
     originalUrl: z.string().optional(),
     isExisting: z.boolean().optional()
   })).optional(),
+  categoryId: z.string().min(1, "Category is required").optional(),
+  tags: z.array(z.string()).optional(),
+  seoTitle: z.string().max(60, "SEO title must be less than 60 characters").optional(),
+  seoDescription: z.string().max(160, "SEO description must be less than 160 characters").optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
-  categoryId: z.string().nullable().optional(),
-  tagIds: z.array(z.string()).optional(),
+  externalLinks: z.string().optional(),
 })
 
 // GET /api/posts/[id] - Get single post
@@ -66,15 +65,7 @@ export async function PUT(
     const { id } = params
     const body = await request.json()
 
-    let data;
-    try {
-      data = updatePostSchema.parse(body)
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return errorResponse('Invalid input', 400, { details: error.errors })
-      }
-      throw error
-    }
+    const data = updatePostSchema.parse(body)
 
     // Check if post exists and user has permission
     const existingPost = await prisma.post.findUnique({
@@ -88,7 +79,10 @@ export async function PUT(
 
     // Role-based access control
     if (user.role === 'AUTHOR' && existingPost.authorId !== user.id) {
-      return errorResponse('Access denied', 403)
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
     }
 
     // Prepare update data
@@ -116,40 +110,34 @@ export async function PUT(
       }
     }
 
-    // Handle optional fields
     if (data.fullText !== undefined) updateData.fullText = data.fullText
     if (data.caption !== undefined) updateData.caption = data.caption
     if (data.description !== undefined) updateData.description = data.description
-    if (data.externalLinks !== undefined) updateData.externalLinks = data.externalLinks
     if (data.seoTitle !== undefined) updateData.seoTitle = data.seoTitle
     if (data.seoDescription !== undefined) updateData.seoDescription = data.seoDescription
-    if (data.featuredImage !== undefined) updateData.featuredImage = data.featuredImage
-    if (data.status !== undefined) {
+    if (data.externalLinks !== undefined) updateData.externalLinks = data.externalLinks
+    if (data.categoryId) updateData.categoryId = data.categoryId
+    
+    if (data.status) {
       updateData.status = data.status
+      // Set publishedAt when publishing
       if (data.status === 'PUBLISHED') {
         updateData.publishedAt = new Date()
       }
     }
 
-    // Handle category
-    if (data.categoryId !== undefined) {
-      if (data.categoryId) {
-        updateData.category = { connect: { id: data.categoryId } }
-      } else {
-        updateData.category = { disconnect: true }
-      }
-    }
-
-    // Handle tags
-    if (data.tagIds !== undefined) {
+    // Handle tags if provided
+    if (data.tags) {
       updateData.tags = {
-        set: data.tagIds.map(id => ({ id }))
+        set: [], // Clear existing connections
+        connect: data.tags.map(tagId => ({ id: tagId }))
       }
     }
 
-    // Handle images
-    if (data.images !== undefined) {
+    // Handle images field - explicitly clear if empty array
+    if (Array.isArray(data.images)) {
       if (data.images.length > 0) {
+        // Filter to only include new images that aren't marked as existing
         const newImages = data.images.filter(img => !img.isExisting)
         updateData.images = newImages.map(img => ({
           url: img.url,
