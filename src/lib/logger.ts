@@ -1,31 +1,28 @@
-interface LogData {
-  [key: string]: any
-}
+type LogLevel = 'info' | 'error' | 'warn' | 'debug';
 
 class Logger {
-  private formatMessage(level: string, message: string, data?: LogData): string {
-    const timestamp = new Date().toISOString()
-    const dataStr = data ? `\n${JSON.stringify(data, null, 2)}` : ''
-    return `[${timestamp}] ${level}: ${message}${dataStr}`
+  private log(level: LogLevel, message: string, ...args: any[]) {
+    const timestamp = new Date().toISOString();
+    console[level](`[${timestamp}] ${level.toUpperCase()}: ${message}`, ...args);
   }
 
-  info(message: string, data?: LogData): void {
-    console.log(this.formatMessage('INFO', message, data))
+  info(message: string, ...args: any[]) {
+    this.log('info', message, ...args);
   }
 
-  error(message: string, data?: LogData): void {
-    console.error(this.formatMessage('ERROR', message, data))
+  error(message: string, ...args: any[]) {
+    this.log('error', message, ...args);
   }
 
-  warn(message: string, data?: LogData): void {
-    console.warn(this.formatMessage('WARN', message, data))
+  warn(message: string, ...args: any[]) {
+    this.log('warn', message, ...args);
   }
 
-  debug(message: string, data?: LogData): void {
+  debug(message: string, ...args: any[]) {
     if (process.env.NODE_ENV === 'development') {
-      console.debug(this.formatMessage('DEBUG', message, data))
+      this.log('debug', message, ...args);
     }
   }
 }
 
-export const logger = new Logger() 
+export const logger = new Logger(); 

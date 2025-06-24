@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getFromCache, setToCache, getContentCacheKey } from '@/lib/redis-cache'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +34,18 @@ export async function GET(request: NextRequest) {
         code: 400
       }, { status: 400 })
     }
+
+    // Generate cache key from full URL
+    const cacheKey = getContentCacheKey(request.url);
+
+    // Try to get from cache first
+    const cachedData = await getFromCache(cacheKey);
+    if (cachedData) {
+      logger.info(`Cache hit for content API: ${request.url}`);
+      return NextResponse.json(cachedData);
+    }
+
+    logger.info(`Cache miss for content API: ${request.url}`);
 
     // Handle specific content request by slug
     if (slug) {
@@ -172,10 +186,15 @@ export async function GET(request: NextRequest) {
         ...(relatedContent && { relatedContent: relatedContentData?.map(formatContentForListWithoutFullText) || [] })
       }
 
-      return NextResponse.json({
+      const response = {
         success: true,
         data: formattedContent
-      })
+      };
+
+      // Cache the response
+      await setToCache(cacheKey, response);
+
+      return NextResponse.json(response);
     }
 
     // Build where clause for list queries
@@ -225,14 +244,19 @@ export async function GET(request: NextRequest) {
 
         const formattedContent = content.map(formatContentForListWithoutFullText)
 
-        return NextResponse.json({
+        const response = {
           success: true,
           data: formattedContent,
           filters: {
             categories: categories,
             totalRequested: totalContent
           }
-        })
+        };
+
+        // Cache the response
+        await setToCache(cacheKey, response);
+
+        return NextResponse.json(response);
       }
     }
 
@@ -271,7 +295,7 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit)
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: formattedContent,
       pagination: {
@@ -286,7 +310,12 @@ export async function GET(request: NextRequest) {
         category: cat,
         totalRequested: formattedContent.length
       }
-    })
+    };
+
+    // Cache the response
+    await setToCache(cacheKey, response);
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Public content API error:', error)
