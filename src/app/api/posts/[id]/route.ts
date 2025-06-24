@@ -4,6 +4,8 @@ import { requireAuth } from '@/lib/auth'
 import { generateSlug, generateExcerpt } from '@/lib/utils'
 import { z } from 'zod'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { purgeCacheBySlug } from '@/lib/redis-cache'
+import { logger } from '@/lib/logger'
 
 const updatePostSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters").optional(),
@@ -65,7 +67,15 @@ export async function PUT(
     const { id } = params
     const body = await request.json()
 
-    const data = updatePostSchema.parse(body)
+    let data;
+    try {
+      data = updatePostSchema.parse(body)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return errorResponse('Invalid input', 400, { details: error.errors })
+      }
+      throw error
+    }
 
     // Check if post exists and user has permission
     const existingPost = await prisma.post.findUnique({
@@ -79,10 +89,7 @@ export async function PUT(
 
     // Role-based access control
     if (user.role === 'AUTHOR' && existingPost.authorId !== user.id) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
+      return errorResponse('Access denied', 403)
     }
 
     // Prepare update data
@@ -126,27 +133,31 @@ export async function PUT(
       }
     }
 
-    // Handle tags if provided
-    if (data.tags) {
-      updateData.tags = {
-        set: [], // Clear existing connections
-        connect: data.tags.map(tagId => ({ id: tagId }))
+    // Handle images - only include new images (not existing ones)
+    if (data.images !== undefined) {
+      if (data.images.length > 0) {
+        const newImages = data.images.filter(img => !img.isExisting)
+        if (newImages.length > 0) {
+          updateData.images = newImages.map(img => ({
+            url: img.url,
+            aspectRatio: img.aspectRatio,
+            baseFilename: img.baseFilename,
+            originalUrl: img.originalUrl
+          }))
+        }
+      } else {
+        updateData.images = []
       }
     }
 
-    // Handle images field - explicitly clear if empty array
-    if (Array.isArray(data.images)) {
-      if (data.images.length > 0) {
-        // Filter to only include new images that aren't marked as existing
-        const newImages = data.images.filter(img => !img.isExisting)
-        updateData.images = newImages.map(img => ({
-          url: img.url,
-          aspectRatio: img.aspectRatio,
-          baseFilename: img.baseFilename,
-          originalUrl: img.originalUrl
+    // Handle tags
+    if (data.tags !== undefined) {
+      updateData.tags = {
+        set: [], // Clear existing tags
+        connectOrCreate: data.tags.map(name => ({
+          where: { name },
+          create: { name }
         }))
-      } else {
-        updateData.images = []
       }
     }
 
@@ -164,12 +175,18 @@ export async function PUT(
       },
     })
 
+    // Purge cache for both old and new slugs
+    await Promise.all([
+      purgeCacheBySlug(existingPost.slug),
+      post.slug !== existingPost.slug ? purgeCacheBySlug(post.slug) : null
+    ].filter(Boolean));
+
+    logger.info(`Cache purged for post slugs: ${existingPost.slug}${post.slug !== existingPost.slug ? `, ${post.slug}` : ''}`);
+
     return successResponse(post, 'Post updated successfully')
   } catch (error) {
     console.error('Update post error:', error)
-    return errorResponse(
-      error instanceof Error ? error.message : 'Internal server error'
-    )
+    return errorResponse('Internal server error')
   }
 }
 
@@ -180,25 +197,30 @@ export async function DELETE(
 ) {
   try {
     const user = await requireAuth(request)
+    const { id } = params
 
     // Check if post exists and user has permission
-    const post = await prisma.post.findUnique({
-      where: { id: params.id },
-      select: { authorId: true },
+    const existingPost = await prisma.post.findUnique({
+      where: { id },
+      select: { id: true, authorId: true, slug: true },
     })
 
-    if (!post) {
+    if (!existingPost) {
       return errorResponse('Post not found', 404)
     }
 
-    // Only allow authors to delete their own posts (admins can delete any)
-    if (user.role !== 'ADMIN' && post.authorId !== user.id) {
-      return errorResponse('Not authorized to delete this post', 403)
+    // Role-based access control
+    if (user.role === 'AUTHOR' && existingPost.authorId !== user.id) {
+      return errorResponse('Access denied', 403)
     }
 
     await prisma.post.delete({
-      where: { id: params.id },
+      where: { id },
     })
+
+    // Purge cache for the deleted post
+    await purgeCacheBySlug(existingPost.slug);
+    logger.info(`Cache purged for deleted post slug: ${existingPost.slug}`);
 
     return successResponse(null, 'Post deleted successfully')
   } catch (error) {

@@ -4,6 +4,8 @@ import { requireAuth } from '@/lib/auth'
 import { generateSlug, generateExcerpt } from '@/lib/utils'
 import { z } from 'zod'
 import { successResponse, errorResponse, createPagination } from '@/lib/api-response'
+import { getFromCache, setToCache, getCustomerStoriesCacheKey } from '@/lib/redis-cache'
+import { logger } from '@/lib/logger'
 
 // Custom URL validator that accepts both absolute and relative URLs
 const urlSchema = z.string().refine(
@@ -114,6 +116,29 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Generate cache key from full URL
+    const cacheKey = getCustomerStoriesCacheKey(request.url);
+
+    // For authenticated requests, we'll skip caching
+    let isAuthenticated = false;
+    try {
+      const user = await requireAuth(request)
+      userRole = user.role
+      isAuthenticated = true;
+    } catch (error) {
+      // No authentication or invalid token - continue with public access
+    }
+
+    // Try to get from cache first (only for public, non-authenticated requests)
+    if (!isAuthenticated) {
+      const cachedData = await getFromCache(cacheKey);
+      if (cachedData) {
+        logger.info(`Cache hit for customer stories API: ${request.url}`);
+        return successResponse(cachedData.data, cachedData.message, cachedData.pagination, cachedData.filters);
+      }
+      logger.info(`Cache miss for customer stories API: ${request.url}`);
+    }
+
     let where: any = {
       status: 'PUBLISHED' // Only include published stories for public access
     }
@@ -177,20 +202,16 @@ export async function GET(request: NextRequest) {
     }
 
     // If there's authentication, allow access to drafts based on role
-    try {
-      const user = await requireAuth(request)
-      userRole = user.role
-      if (user.role === 'ADMIN') {
+    if (isAuthenticated) {
+      if (userRole === 'ADMIN') {
         // Admin can see all stories
         where = {}
         if (status) where.status = status
-      } else if (user.role === 'AUTHOR') {
+      } else if (userRole === 'AUTHOR') {
         // Authors can see their own stories
         where = { authorId: user.id }
         if (status) where.status = status
       }
-    } catch (error) {
-      // No authentication or invalid token - continue with public access
     }
 
     // Handle specific customer story request by slug
@@ -211,7 +232,14 @@ export async function GET(request: NextRequest) {
         return errorResponse('Customer story not found', 404)
       }
 
-      return successResponse(customerStory, 'Customer story retrieved successfully')
+      const response = successResponse(customerStory, 'Customer story retrieved successfully');
+
+      // Cache the response (only for public, non-authenticated requests)
+      if (!isAuthenticated) {
+        await setToCache(cacheKey, response);
+      }
+
+      return response;
     }
 
     if (search) {
@@ -262,12 +290,19 @@ export async function GET(request: NextRequest) {
       role: userRole
     }
 
-    return successResponse(
+    const response = successResponse(
       customerStories,
       'Customer stories retrieved successfully',
       createPagination(page, limit, total),
       filters
-    )
+    );
+
+    // Cache the response (only for public, non-authenticated requests)
+    if (!isAuthenticated) {
+      await setToCache(cacheKey, response);
+    }
+
+    return response;
   } catch (error) {
     console.error('Get customer stories error:', error)
     return errorResponse('Internal server error')

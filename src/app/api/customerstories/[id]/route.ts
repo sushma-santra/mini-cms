@@ -4,6 +4,8 @@ import { requireAuth } from '@/lib/auth'
 import { generateSlug } from '@/lib/utils'
 import { z } from 'zod'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { purgeCacheBySlug } from '@/lib/redis-cache'
+import { logger } from '@/lib/logger'
 
 const updateCustomerStorySchema = z.object({
   title: z.string().min(1).optional(),
@@ -270,6 +272,14 @@ export async function PUT(
       },
     })
 
+    // Purge cache for both old and new slugs
+    await Promise.all([
+      purgeCacheBySlug(existingStory.slug),
+      customerStory.slug !== existingStory.slug ? purgeCacheBySlug(customerStory.slug) : null
+    ].filter(Boolean));
+
+    logger.info(`Cache purged for customer story slugs: ${existingStory.slug}${customerStory.slug !== existingStory.slug ? `, ${customerStory.slug}` : ''}`);
+
     return successResponse(customerStory, 'Customer story updated successfully')
   } catch (error) {
     console.error('Update customer story error:', error)
@@ -291,34 +301,29 @@ export async function DELETE(
     // Check if customer story exists and user has permission
     const existingStory = await prisma.customerStory.findUnique({
       where: { id },
-      select: { id: true, authorId: true },
+      select: { id: true, authorId: true, slug: true },
     })
 
     if (!existingStory) {
-      return NextResponse.json(
-        { error: 'Customer story not found' },
-        { status: 404 }
-      )
+      return errorResponse('Customer story not found', 404)
     }
 
     // Role-based access control
     if (user.role === 'AUTHOR' && existingStory.authorId !== user.id) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
+      return errorResponse('Access denied', 403)
     }
 
     await prisma.customerStory.delete({
       where: { id },
     })
 
-    return NextResponse.json({ message: 'Customer story deleted successfully' })
+    // Purge cache for the deleted customer story
+    await purgeCacheBySlug(existingStory.slug);
+    logger.info(`Cache purged for deleted customer story slug: ${existingStory.slug}`);
+
+    return successResponse(null, 'Customer story deleted successfully')
   } catch (error) {
     console.error('Delete customer story error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorResponse('Internal server error')
   }
 } 
