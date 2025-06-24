@@ -1,0 +1,50 @@
+meta {
+  name: Submit Ebook Form
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/submit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "module_name": "ebook",
+    "first_name": "John",
+    "last_name": "Doe",
+    "organisation_name": "Acme Corp",
+    "country": "USA",
+    "email": "john.doe@example.com",
+    "privacy_policy": true,
+    "captcha": "<recaptcha-token>"
+  }
+}
+
+docs {
+  name: Submit Ebook Form API
+  desc: |
+    Submit a form for ebook download. Requires reCAPTCHA verification.
+    The form collects user information and ensures privacy policy acceptance.
+    
+    Response:
+    - 200: Submission successful
+    - 400: Validation error or invalid captcha
+    - 500: Server error
+
+  params:
+    module_name: Type of form submission (required, must be "ebook")
+    first_name: User's first name (required)
+    last_name: User's last name (required)
+    organisation_name: Company or organization name (required)
+    country: User's country (required)
+    email: Valid email address (required)
+    privacy_policy: Must be true to accept privacy policy (required)
+    captcha: Valid reCAPTCHA token (required)
+} 

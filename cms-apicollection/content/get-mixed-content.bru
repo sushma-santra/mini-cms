@@ -1,0 +1,25 @@
+meta {
+  name: Get Mixed Content Feed
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/content
+  body: none
+}
+
+query {
+  cat: blogs,media,case-studies
+  totalContent: 6
+}
+
+docs {
+  name: Mixed Content Feed API
+  desc: Get a mixed feed of content from multiple categories
+
+  params {
+    cat: Comma-separated list of categories
+    totalContent: Total number of items to return across all categories
+  }
+} 
