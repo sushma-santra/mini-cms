@@ -58,16 +58,56 @@ export default function EventEditor({ initialData, onSave, onCancel, isLoading }
     }
   }, [watchedTitle, isSlugManuallyEdited, setValue])
 
-  const watchedImage = watch('image')
+  const [image, setImage] = useState<UploadedImage[]>(() => {
+    const initialImages: UploadedImage[] = []
+    
+    // Add existing images if available (can be multiple)
+    if (initialData?.images && Array.isArray(initialData.images)) {
+      initialData.images.forEach((img: any, index: number) => {
+        initialImages.push({
+          id: img.id || `existing-img-${index}`,
+          url: img.url,
+          aspectRatio: img.aspectRatio || 'free',
+          baseFilename: img.baseFilename || undefined,
+          originalUrl: img.originalUrl || undefined,
+          featured: img.featured || false,  // Preserve featured status
+          isExisting: true
+        })
+      })
+    }
+    // Fallback for single image (legacy support)
+    else if (initialData?.image) {
+      initialImages.push({
+        id: initialData.image.id || `existing-img-0`,
+        url: initialData.image.url,
+        aspectRatio: initialData.image.aspectRatio || 'free',
+        baseFilename: initialData.image.baseFilename || undefined,
+        originalUrl: initialData.image.originalUrl || undefined,
+        featured: true,  // Single image is always featured
+        isExisting: true
+      })
+    }
+    
+    // If no featured image is marked, set the first image as featured
+    if (initialImages.length > 0 && !initialImages.some(img => img.featured)) {
+      initialImages[0].featured = true
+    }
+    
+    return initialImages
+  })
 
-  const [image, setImage] = useState<UploadedImage[]>(
-    initialData?.image ? [initialData.image] : []
-  )
+  // Add handleImagesChange function to properly manage featured status
+  const handleImagesChange = (newImages: UploadedImage[]) => {
+    // Ensure only one image is featured
+    const featuredImage = newImages.find(img => img.featured)
+    if (!featuredImage && newImages.length > 0) {
+      // If no image is featured, mark the first one
+      newImages[0].featured = true
+    }
+    setImage(newImages)
+  }
 
-  useEffect(() => {
-    console.log('Image state changed:', image);
-    setValue('image', image[0])
-  }, [image, setValue])
+  // Remove the single image useEffect since we only use images array now
 
   const addHighlight = () => {
     setHighlights([...highlights, { title: '', description: '' }])
@@ -84,12 +124,29 @@ export default function EventEditor({ initialData, onSave, onCancel, isLoading }
   }
 
   const onSubmit = async (data: EventFormData) => {
+    // Ensure only one image is featured if there are multiple images
+    let processedImages = [...image]
+    if (processedImages.length > 0) {
+      const featuredImages = processedImages.filter(img => img.featured)
+      if (featuredImages.length > 1) {
+        processedImages = processedImages.map(img => ({
+          ...img,
+          featured: img.id === featuredImages[0].id
+        }))
+      } else if (featuredImages.length === 0) {
+        processedImages[0].featured = true
+      }
+    }
+
     const eventData = {
       ...data,
       slug: data.slug || generateSlug(data.title),
       event_highlights: highlights,
-      image: image[0] || null,
+      images: processedImages, // Only send images array
     }
+
+
+
     await onSave(eventData)
   }
 
@@ -235,8 +292,8 @@ export default function EventEditor({ initialData, onSave, onCancel, isLoading }
           <h4 className="text-lg font-medium text-gray-900 mb-4">Event Image</h4>
           <MultipleImageUploader
             images={image}
-            onImagesChange={setImage}
-            maxImages={1}
+            onImagesChange={handleImagesChange}
+            maxImages={5}
           />
           {errors.image && <p className="mt-2 text-sm text-red-600">{errors.image.message as string}</p>}
         </div>

@@ -19,8 +19,8 @@ const urlSchema = z.string().refine(
         return false
       }
     }
-    // Accept relative URLs that start with / and contain no spaces
-    return url.startsWith('/') && !url.includes(' ')
+    // Accept relative URLs that start with / or images/ and contain no spaces
+    return (url.startsWith('/') || url.startsWith('images/')) && !url.includes(' ')
   },
   { message: 'Invalid URL' }
 )
@@ -43,8 +43,17 @@ const baseEventSchema = z.object({
     aspectRatio: z.string(),
     baseFilename: z.string().optional(),
     originalUrl: urlSchema.optional(),
-    isExisting: z.boolean().optional()
+    isExisting: z.boolean().optional(),
+    featured: z.boolean().optional()
   }).optional(),
+  images: z.array(z.object({
+    url: urlSchema,
+    aspectRatio: z.string(),
+    baseFilename: z.string().optional(),
+    originalUrl: urlSchema.optional(),
+    isExisting: z.boolean().optional(),
+    featured: z.boolean().optional()
+  })).optional(),
   event_highlights: z.array(z.object({
     title: z.string().min(1, "Highlight title is required"),
     description: z.string().min(1, "Highlight description is required")
@@ -199,16 +208,38 @@ export async function POST(request: NextRequest) {
       return errorResponse('End date must be after start date', 400)
     }
 
-    const { image, ...restOfValidatedData } = validatedData;
+    const { image, images, ...restOfValidatedData } = validatedData;
 
-    const eventData = {
+    // Handle multiple images (prioritize images array, fallback to single image)
+    let processedImages: any[] = []
+
+    // If images array is provided, use it
+    if (images && images.length > 0) {
+      // Ensure only one image is featured
+      let found = false;
+      processedImages = images.map((img: any) => {
+        if (img.featured && !found) {
+          found = true;
+          return { ...img, featured: true };
+        }
+        return { ...img, featured: false };
+      });
+      // If none were featured, make the first one featured
+      if (!found) processedImages[0].featured = true;
+    }
+    // Fallback to single image if provided (convert to array)
+    else if (image) {
+      processedImages = [{ ...image, featured: true }];
+    }
+
+    const eventData: any = {
       ...restOfValidatedData,
       slug,
       start_date: new Date(start_date),
       end_date: new Date(end_date),
       authorId: user.id,
       publishedAt: validatedData.status === PostStatus.PUBLISHED ? new Date() : null,
-      image: image || Prisma.JsonNull,
+      images: processedImages.length > 0 ? processedImages : Prisma.JsonNull,
     }
 
     const event = await prisma.event.create({

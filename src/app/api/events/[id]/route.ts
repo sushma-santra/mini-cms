@@ -48,11 +48,34 @@ export async function PUT(
       return errorResponse('Access denied', 403)
     }
 
-    const { start_date, end_date, ...restOfData } = validatedData
+    const { start_date, end_date, image, images, ...restOfData } = validatedData
+
+    // Handle multiple images (prioritize images array, fallback to single image)
+    let processedImages: any[] = []
+
+    // If images array is provided, use it
+    if (images && images.length > 0) {
+      // Ensure only one image is featured
+      let found = false;
+      processedImages = images.map((img: any) => {
+        if (img.featured && !found) {
+          found = true;
+          return { ...img, featured: true };
+        }
+        return { ...img, featured: false };
+      });
+      // If none were featured, make the first one featured
+      if (!found) processedImages[0].featured = true;
+    }
+    // Fallback to single image if provided (convert to array)
+    else if (image) {
+      processedImages = [{ ...image, featured: true }];
+    }
 
     const eventData: any = { ...restOfData }
     if (start_date) eventData.start_date = new Date(start_date)
     if (end_date) eventData.end_date = new Date(end_date)
+    if (processedImages.length > 0) eventData.images = processedImages
 
     const updatedEvent = await prisma.event.update({
       where: { id },

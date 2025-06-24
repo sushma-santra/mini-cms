@@ -92,6 +92,8 @@ export default function EditPostPage() {
 
       const responseData: ApiResponse = await response.json()
 
+
+
       if (responseData.success) {
         toast.success(responseData.message)
         router.push('/admin/posts')

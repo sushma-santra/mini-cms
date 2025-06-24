@@ -12,15 +12,20 @@ export const urlSchema = z.string().refine(
         return false
       }
     }
-    // Accept relative URLs that start with / and contain no spaces
-    return url.startsWith('/') && !url.includes(' ')
+    // Accept relative URLs that start with / or images/ and contain no spaces
+    return (url.startsWith('/') || url.startsWith('images/')) && !url.includes(' ')
   },
   { message: 'Invalid URL' }
 )
 
 // Image schema used across the application
 export const imageSchema = z.object({
-  url: z.string().min(1, "Image URL is required"),
+  url: urlSchema,
+  aspectRatio: z.string().optional(),
+  baseFilename: z.string().optional(),
+  originalUrl: urlSchema.optional(),
+  isExisting: z.boolean().optional(),
+  featured: z.boolean().optional()
 })
 
 // Event highlight schema
@@ -51,6 +56,7 @@ export const baseEventSchema = z.object({
   end_time: z.string().max(10, "End time must be less than 10 characters").optional(),
   join_us_link: z.string().url("Invalid join us link URL").or(z.literal('')).optional(),
   image: imageSchema.nullable().optional(),
+  images: z.array(imageSchema).optional(),
   event_highlights: z.array(eventHighlightSchema).optional(),
   event_map_embed: z.string().optional(),
   event_details: z.string().optional(),
@@ -85,7 +91,7 @@ export const eventListSelect = {
   start_time: true,
   end_time: true,
   join_us_link: true,
-  image: true,
+  images: true,
   event_map_embed: true,
   status: true,
   publishedAt: true,

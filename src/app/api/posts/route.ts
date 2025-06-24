@@ -20,7 +20,8 @@ const basePostSchema = z.object({
     aspectRatio: z.string(),
     baseFilename: z.string().optional(),
     originalUrl: z.string().optional(),
-    isExisting: z.boolean().optional()
+    isExisting: z.boolean().optional(),
+    featured: z.boolean().optional()
   })).optional(),
   status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
   categoryId: z.string().optional(),
@@ -37,7 +38,8 @@ const createPostSchema = z.object({
     aspectRatio: z.string(),
     baseFilename: z.string().optional(),
     originalUrl: z.string().optional(),
-    isExisting: z.boolean().optional()
+    isExisting: z.boolean().optional(),
+    featured: z.boolean().optional()
   })).optional(),
   categoryId: z.string().min(1, "Category is required"),
   tags: z.array(z.string()).optional(),
@@ -149,6 +151,7 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Date.now()}`
     }
 
+    // Prepare post data
     const postData: any = {
       title: validatedData.title,
       slug,
@@ -164,16 +167,28 @@ export async function POST(request: NextRequest) {
       authorId: user.id,
     }
 
-    // Add images if provided - only include new images (not existing ones)
+    // Handle images and featured status
     if (validatedData.images && validatedData.images.length > 0) {
-      const newImages = validatedData.images.filter(img => !img.isExisting)
-      if (newImages.length > 0) {
-        postData.images = newImages.map(img => ({
-          url: img.url,
-          aspectRatio: img.aspectRatio,
-          baseFilename: img.baseFilename,
-          originalUrl: img.originalUrl
-        }))
+      // Enforce only one featured image
+      let found = false;
+      postData.images = validatedData.images.map(img => {
+        if (img.featured && !found) {
+          found = true;
+          return { ...img, featured: true };
+        }
+        return { ...img, featured: false };
+      });
+      // If none were featured, make the first one featured
+      if (!found) postData.images[0].featured = true;
+    } else {
+      postData.images = []
+      postData.featuredImage = null
+    }
+
+    // Handle tags if provided
+    if (validatedData.tags) {
+      postData.tags = {
+        connect: validatedData.tags.map(tagId => ({ id: tagId }))
       }
     }
 
@@ -190,10 +205,13 @@ export async function POST(request: NextRequest) {
           tags: true,
         },
       })
-      
-      return NextResponse.json(post, { status: 201 })
+      // Return consistent response structure
+      return NextResponse.json(
+        { success: true, message: "Post created successfully", data: post },
+        { status: 201 }
+      );
     } catch (dbError) {
-      throw dbError
+      throw dbError;
     }
   } catch (error) {
     console.error('Create post error:', error)

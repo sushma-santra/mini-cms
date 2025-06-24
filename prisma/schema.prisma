@@ -154,6 +154,7 @@ model Event {
   status           PostStatus @default(DRAFT)
   updatedAt        DateTime   @updatedAt
   image            Json?
+  images           Json?
   event_highlights Json?
   author           User       @relation(fields: [authorId], references: [id])
 
