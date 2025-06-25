@@ -7,6 +7,23 @@ export async function GET(request: NextRequest) {
     // Test Mandrill configuration
     const configTest = await mandrillService.testConfiguration();
     
+    const recommendations: string[] = [];
+
+    // Add recommendations based on configuration
+    if (!process.env.MANDRILL_API_KEY) {
+      recommendations.push('Set MANDRILL_API_KEY environment variable with your Mailchimp API key');
+    }
+
+    if (!process.env.FROM_EMAIL) {
+      recommendations.push('Set FROM_EMAIL environment variable with a verified email address');
+    } else if (process.env.FROM_EMAIL.includes('example.com')) {
+      recommendations.push('Replace FROM_EMAIL with a real, verified domain (not example.com)');
+    }
+
+    if (configTest.success) {
+      recommendations.push('✅ Configuration looks good! Try sending a test email.');
+    }
+
     const diagnostics = {
       timestamp: new Date().toISOString(),
       environment: {
@@ -15,23 +32,8 @@ export async function GET(request: NextRequest) {
         FROM_NAME: process.env.FROM_NAME || 'Your Company (default)',
       },
       configuration: configTest,
-      recommendations: []
+      recommendations
     };
-
-    // Add recommendations based on configuration
-    if (!process.env.MANDRILL_API_KEY) {
-      diagnostics.recommendations.push('Set MANDRILL_API_KEY environment variable with your Mailchimp API key');
-    }
-
-    if (!process.env.FROM_EMAIL) {
-      diagnostics.recommendations.push('Set FROM_EMAIL environment variable with a verified email address');
-    } else if (process.env.FROM_EMAIL.includes('example.com')) {
-      diagnostics.recommendations.push('Replace FROM_EMAIL with a real, verified domain (not example.com)');
-    }
-
-    if (configTest.success) {
-      diagnostics.recommendations.push('✅ Configuration looks good! Try sending a test email.');
-    }
 
     return NextResponse.json(diagnostics, { status: 200 });
   } catch (error) {
