@@ -1,0 +1,38 @@
+meta {
+  name: List Content
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/content
+  body: none
+}
+
+query {
+  cat: blogs
+  page: 1
+  limit: 20
+}
+
+docs {
+  name: List Content API
+  desc: |
+    Get a paginated list of content items with optional category filtering.
+    Returns content items sorted by publish date in descending order.
+    
+    Response includes:
+    - Content items with basic metadata
+    - Pagination information
+    - Category filters applied
+    
+    Common categories:
+    - blogs: Blog posts and articles
+    - media: Media content and resources
+    - case-studies: Customer success stories and case studies
+
+  params:
+    cat: Category filter (blogs, media, case-studies)
+    page: Page number (default: 1)
+    limit: Items per page (default: 20, max: 100)
+} 

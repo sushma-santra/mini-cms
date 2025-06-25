@@ -16,6 +16,7 @@ model User {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   customerStories CustomerStory[]
+  events          Event[]
   posts           Post[]
 
   @@map("users")
@@ -75,37 +76,28 @@ model EbookSubmission {
   firstName        String   @db.VarChar(100)
   lastName         String   @db.VarChar(100)
   organisationName String   @db.VarChar(200)
-  country         String   @db.VarChar(100)
-  email           String   @db.VarChar(255)
-  privacyPolicy   Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  country          String   @db.VarChar(100)
+  email            String   @db.VarChar(255)
+  privacyPolicy    Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@map("ebook_submissions")
 }
 
-model NewsletterSubscription {
-  id        String   @id @default(cuid())
-  email     String   @unique @db.VarChar(255)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("newsletter_subscriptions")
-}
-
 model ContactSubmission {
-  id                  String   @id @default(cuid())
-  firstName           String   @db.VarChar(100)
-  lastName            String   @db.VarChar(100)
-  organisation        String   @db.VarChar(200)
-  typeOfOrganisation  String   @db.VarChar(100)
-  country             String   @db.VarChar(100)
-  phoneNumber         String   @db.VarChar(50)
-  email               String   @db.VarChar(255)
-  message             String   @db.Text
-  privacyPolicy       Boolean? @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  firstName          String   @db.VarChar(100)
+  lastName           String   @db.VarChar(100)
+  organisation       String   @db.VarChar(200)
+  typeOfOrganisation String   @db.VarChar(100)
+  country            String   @db.VarChar(100)
+  phoneNumber        String   @db.VarChar(50)
+  email              String   @db.VarChar(255)
+  message            String
+  privacyPolicy      Boolean? @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("contact_submissions")
 }
@@ -137,6 +129,45 @@ model CustomerStory {
   @@index([industry])
   @@index([publishedAt])
   @@map("customer_stories")
+}
+
+model Event {
+  id               String     @id @default(cuid())
+  title            String     @db.VarChar(200)
+  slug             String     @unique @db.VarChar(250)
+  external_link    String?    @db.VarChar(2048)
+  country          String?    @db.VarChar(100)
+  state            String?    @db.VarChar(100)
+  city             String?    @db.VarChar(100)
+  venue            String?    @db.VarChar(200)
+  booth            String?    @db.VarChar(50)
+  start_date       DateTime
+  end_date         DateTime
+  start_time       String?    @db.VarChar(10)
+  end_time         String?    @db.VarChar(10)
+  join_us_link     String?    @db.VarChar(2048)
+  event_map_embed  String?
+  event_details    String?
+  authorId         String
+  createdAt        DateTime   @default(now())
+  publishedAt      DateTime?
+  status           PostStatus @default(DRAFT)
+  updatedAt        DateTime   @updatedAt
+  image            Json?
+  images           Json?
+  event_highlights Json?
+  author           User       @relation(fields: [authorId], references: [id])
+
+  @@index([status])
+  @@index([start_date])
+  @@index([end_date])
+  @@map("events")
+}
+
+model NewsletterSubscription {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }
 
 enum UserRole {

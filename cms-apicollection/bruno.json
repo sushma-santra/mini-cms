@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "cms-apicollection",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

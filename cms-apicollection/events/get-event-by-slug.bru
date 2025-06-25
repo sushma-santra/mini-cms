@@ -1,0 +1,23 @@
+meta {
+  name: Get Event by Slug
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/events
+  body: none
+}
+
+query {
+  slug: annual-tech-conference-2025
+}
+
+docs {
+  name: Get Event by Slug API
+  desc: Get a specific event by its slug
+
+  params {
+    slug: URL-friendly slug of the event (required)
+  }
+} 

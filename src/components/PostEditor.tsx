@@ -54,24 +54,16 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
           url: img.url,
           aspectRatio: img.aspectRatio || 'free',
           baseFilename: img.baseFilename || undefined,
-          originalUrl: img.originalUrl || undefined,  // Include original URL if available
-          isExisting: true  // Mark as existing image
+          originalUrl: img.originalUrl || undefined,
+          featured: img.featured || false,  // Preserve featured status
+          isExisting: true
         })
       })
     }
     
-    // Add featured image if exists and not already in images array
-    if (initialData?.featuredImage) {
-      const alreadyExists = initialImages.some(img => img.url === initialData.featuredImage)
-      if (!alreadyExists) {
-        initialImages.push({
-          id: 'featured-img',
-          url: initialData.featuredImage,
-          aspectRatio: 'free',
-          baseFilename: initialData.featuredImageBaseFilename || undefined,
-          isExisting: true  // Mark featured image as existing
-        })
-      }
+    // If no featured image is marked, set the first image as featured
+    if (initialImages.length > 0 && !initialImages.some(img => img.featured)) {
+      initialImages[0].featured = true
     }
     
     return initialImages
@@ -202,48 +194,76 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
     setFullText((prev: string) => prev + '\n' + snippet)
   }
 
+  // Add handleImagesChange function to properly manage featured status
+  const handleImagesChange = (newImages: UploadedImage[]) => {
+    // Ensure only one image is featured
+    const featuredImage = newImages.find(img => img.featured)
+    if (!featuredImage && newImages.length > 0) {
+      // If no image is featured, mark the first one
+      newImages[0].featured = true
+    }
+    setImages(newImages)
+  }
+
+  // Update the handleSubmit function to properly handle images
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Client-side validation
-    if (!title.trim()) {
-      alert('Please enter a post title.')
-      return
-    }
-    
-    // Validate that either content or external link is provided
-    if (!fullText.trim() && !externalLinks.trim()) {
-      alert('Please either add content or provide an external link.')
-      return
-    }
-    
-    // Filter out invalid or empty images
-    const validImages = images.filter(img => img.url && img.url.trim() !== '')
-    
-    const data = {
-      title,
-      slug,
-      fullText: fullText.trim() || undefined,
-      caption,
-      description,
-      externalLinks: externalLinks.trim() || undefined,
-      status,
-      seoTitle: seoTitle || undefined,
-      seoDescription: seoDescription || undefined,
-      featuredImage: validImages.length > 0 ? validImages[0].url : null,
-      images: validImages.map(img => ({
-        url: img.url,
-        aspectRatio: img.aspectRatio,
-        baseFilename: img.baseFilename,
-        originalUrl: img.originalUrl,
-        isExisting: img.isExisting || false
-      })),
-      categoryId: categoryId || null,
-      tagIds: selectedTagIds,
-    }
+    if (!onSave) return
 
-    if (onSave) {
-      await onSave(data)
+    try {
+      // Client-side validation
+      if (!title.trim()) {
+        alert('Please enter a post title.')
+        return
+      }
+
+      // Validate that either content or external link is provided
+      if (!fullText.trim() && !externalLinks.trim()) {
+        alert('Please either add content or provide an external link.')
+        return
+      }
+
+      // Ensure only one image is featured
+      let processedImages = [...images]
+      const featuredImages = processedImages.filter(img => img.featured)
+      if (featuredImages.length > 1) {
+        processedImages = processedImages.map(img => ({
+          ...img,
+          featured: img.id === featuredImages[0].id
+        }))
+      } else if (featuredImages.length === 0 && processedImages.length > 0) {
+        processedImages[0].featured = true
+      }
+
+      // Prepare post data
+      const postData = {
+        title: title.trim(),
+        slug: slug.trim(),
+        fullText: fullText.trim() || undefined,
+        caption: caption.trim(),
+        description: description.trim(),
+        externalLinks: externalLinks.trim() || undefined,
+        seoTitle: seoTitle.trim() || undefined,
+        seoDescription: seoDescription.trim() || undefined,
+        status,
+        categoryId: categoryId || undefined,
+        tags: selectedTagIds,
+        images: processedImages
+      }
+
+      
+
+      await onSave(postData)
+    } catch (error) {
+      console.error('Error saving post:', error)
+      alert('Failed to save post. Please try again.')
+    }
+  }
+
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (onCancel) {
+      onCancel()
     }
   }
 
@@ -384,7 +404,7 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
               <h3 className="text-sm font-semibold text-gray-900 mb-4">Media Gallery</h3>
               <MultipleImageUploader
                 images={images}
-                onImagesChange={setImages}
+                onImagesChange={handleImagesChange}
                 maxImages={10}
               />
             </div>
@@ -619,27 +639,18 @@ export default function PostEditor({ initialData, onSave, onCancel, isLoading }:
             <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={onCancel}
-                className="inline-flex justify-center items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                onClick={handleCancel}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                disabled={isLoading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
+                className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
                 disabled={isLoading}
-                className="inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
-                      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
-                    </svg>
-                    Saving...
-                  </>
-                ) : (
-                  'Save Post'
-                )}
+                {isLoading ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>

@@ -15,6 +15,7 @@ export interface UploadedImage {
   originalName?: string // Original file name
   file?: File
   isExisting?: boolean  // Track if this is an existing image vs newly uploaded
+  featured?: boolean    // Track if this is the featured image
 }
 
 interface MultipleImageUploaderProps {
@@ -127,14 +128,14 @@ export default function MultipleImageUploader({
         
         // Create FormData for the new crops only
         const formData = new FormData()
-        
-        // Add only the new cropped images and their aspect ratios
         crops.forEach((crop, index) => {
-          formData.append('files', crop.blob, `${baseFilename}`)
+          formData.append('files', crop.blob, baseFilename || 'image')
           formData.append('aspectRatios', crop.aspectRatio)
         })
         
-        formData.append('baseFilename', baseFilename)
+        if (baseFilename) {
+          formData.append('baseFilename', baseFilename)
+        }
 
         const response = await fetch('/api/upload/multiple', {
           method: 'POST',
@@ -158,28 +159,33 @@ export default function MultipleImageUploader({
         // Create a map of new crops by aspect ratio
         const newCropsByAspectRatio = new Map()
         result.uploads.forEach((upload: any) => {
-          // Find the original image to preserve its ID
+          // Find the original image to preserve its ID and featured status
           const originalImage = images.find(img => 
             img.baseFilename === editingImageSet && img.aspectRatio === upload.aspectRatio
           )
           
           newCropsByAspectRatio.set(upload.aspectRatio, {
-            id: originalImage?.id || `img-${Date.now()}-${upload.aspectRatio}`, // Preserve original ID
-            url: upload.url + `?t=${Date.now()}`, // Add cache-busting parameter
+            id: originalImage?.id || `img-${Date.now()}-${upload.aspectRatio}`,
+            url: upload.url + `?t=${Date.now()}`,
             aspectRatio: upload.aspectRatio,
             baseFilename: baseFilename,
             originalUrl: originalUrl,
-            originalName: originalFileName || upload.originalName, // Use stored original name
-            isExisting: true  // Mark as existing since we're updating existing images
+            originalName: originalFileName || upload.originalName,
+            isExisting: true,
+            featured: originalImage?.featured || false // Preserve featured status
           })
         })
         
         // Update images: keep existing versions that weren't re-cropped, replace ones that were
-        const updatedImages = images.map(img => {
+        let updatedImages = images.map(img => {
           if (img.baseFilename === editingImageSet) {
             // If this aspect ratio was re-cropped, use the new version
             if (newCropsByAspectRatio.has(img.aspectRatio)) {
-              return newCropsByAspectRatio.get(img.aspectRatio)
+              const newCrop = newCropsByAspectRatio.get(img.aspectRatio)
+              return {
+                ...newCrop,
+                featured: img.featured // Preserve featured status
+              }
             }
             // Otherwise, keep the existing version
             return img
@@ -194,33 +200,42 @@ export default function MultipleImageUploader({
             img.baseFilename === editingImageSet && img.aspectRatio === aspectRatio
           )
           if (!existsInCurrentImages) {
-            updatedImages.push(newCrop)
+            updatedImages.push({
+              ...newCrop,
+              featured: false // New crops are not featured by default
+            })
           }
         })
         
+        // Ensure only one image is featured
+        const featuredImages = updatedImages.filter(img => img.featured)
+        if (featuredImages.length > 1) {
+          // Keep only the first featured image
+          updatedImages = updatedImages.map((img, index) => ({
+            ...img,
+            featured: img.id === featuredImages[0].id
+          }))
+        } else if (featuredImages.length === 0 && updatedImages.length > 0) {
+          // If no image is featured, set the first one as featured
+          updatedImages[0].featured = true
+        }
+        
+  
         onImagesChange(updatedImages)
-        
-        // Force a re-render by updating the expanded sets to trigger UI refresh
-        setExpandedSets(prev => new Set([...Array.from(prev), editingImageSet]))
       } else {
-        // Full replacement or new upload - existing behavior
-        const baseFilename = editingImageSet || (currentImage ? generateBaseFilename(currentImage.name) : generateBaseFilename())
+        // Handle new uploads or full replacements
+        const baseFilename = editingMode === 'replace' ? editingImageSet : generateBaseFilename()
         
-        // Create FormData for multiple upload
+        // Create FormData for the new crops
         const formData = new FormData()
-        
-        // Add all cropped images and their aspect ratios
         crops.forEach((crop, index) => {
-          formData.append('files', crop.blob, `${baseFilename}`)
+          formData.append('files', crop.blob, baseFilename || 'image')
           formData.append('aspectRatios', crop.aspectRatio)
         })
         
-        // Add original file if we have one (for new uploads)
-        if (currentImage) {
-          formData.append('originalFile', currentImage)
+        if (baseFilename) {
+          formData.append('baseFilename', baseFilename)
         }
-        
-        formData.append('baseFilename', baseFilename)
 
         const response = await fetch('/api/upload/multiple', {
           method: 'POST',
@@ -237,51 +252,70 @@ export default function MultipleImageUploader({
 
         const result = await response.json()
         
-        // Get the shared base filename from the API response
-        const sharedBaseFilename = result.baseFilename || `upload-${Date.now()}`
-        
-        // Create new image objects from upload results, including original URL
-        const newImages = result.uploads.map((upload: any) => ({
-          id: `img-${Date.now()}-${upload.aspectRatio}`,
+        // Create new image objects
+        const newImages = result.uploads.map((upload: any, index: number) => ({
+          id: `img-${Date.now()}-${index}`,
           url: upload.url,
           aspectRatio: upload.aspectRatio,
-          baseFilename: sharedBaseFilename,
-          originalUrl: result.originalUrl,  // Include original URL from API response
-          originalName: originalFileName || upload.originalName, // Use stored original name
-          isExisting: false  // Mark as new images
+          baseFilename: baseFilename,
+          originalUrl: upload.originalUrl,
+          originalName: originalFileName || upload.originalName,
+          isExisting: false,
+          featured: false // New uploads are not featured by default
         }))
 
-        if (editingImageSet) {
-          // Replace existing image set with new images
+        if (editingMode === 'replace') {
+          // Replace the entire image set
           const updatedImages = images.filter(img => img.baseFilename !== editingImageSet)
-          onImagesChange([...updatedImages, ...newImages])
+          
+          // If the replaced set had a featured image, make the first new image featured
+          const hadFeatured = images.some(img => img.baseFilename === editingImageSet && img.featured)
+          if (hadFeatured && newImages.length > 0) {
+            newImages[0].featured = true
+          }
+          
+          // Combine and ensure only one featured image
+          let finalImages = [...updatedImages, ...newImages]
+          const featuredImages = finalImages.filter(img => img.featured)
+          if (featuredImages.length > 1) {
+            finalImages = finalImages.map((img, index) => ({
+              ...img,
+              featured: img.id === featuredImages[0].id
+            }))
+          } else if (featuredImages.length === 0 && finalImages.length > 0) {
+            finalImages[0].featured = true
+          }
+          
+  
+          onImagesChange(finalImages)
         } else {
-          // Add new images to the list
-          onImagesChange([...images, ...newImages])
-        }
-        
-        // Auto-expand the newly created/updated set if it has multiple versions
-        if (newImages.length > 1) {
-          setExpandedSets(prev => new Set([...Array.from(prev), sharedBaseFilename]))
+          // Add new images
+          let updatedImages = [...images, ...newImages]
+          
+          // Ensure only one featured image
+          const featuredImages = updatedImages.filter(img => img.featured)
+          if (featuredImages.length > 1) {
+            updatedImages = updatedImages.map((img, index) => ({
+              ...img,
+              featured: img.id === featuredImages[0].id
+            }))
+          } else if (featuredImages.length === 0 && updatedImages.length > 0) {
+            updatedImages[0].featured = true
+          }
+          
+  
+          onImagesChange(updatedImages)
         }
       }
-      
+
       setShowCropper(false)
       setCurrentImage(null)
       setCurrentImageUrl(null)
       setEditingImageSet(null)
-      setEditingMode('new')  // Reset to default mode
-      setOriginalFileName(null)  // Reset original file name
-      
-      // Reset file inputs
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-      if (editFileInputRef.current) {
-        editFileInputRef.current.value = ''
-      }
+      setOriginalFileName(null)
     } catch (error) {
-      alert(`Failed to upload images: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('Upload error:', error)
+      alert('Failed to upload images. Please try again.')
     } finally {
       setUploading(false)
     }
@@ -302,7 +336,15 @@ export default function MultipleImageUploader({
   }
 
   const removeImage = (imageId: string) => {
-    onImagesChange(images.filter(img => img.id !== imageId))
+    const updatedImages = images.filter(img => img.id !== imageId)
+    
+    // If we just removed the featured image and there are other images,
+    // make the first remaining image featured
+    if (images.find(img => img.id === imageId)?.featured && updatedImages.length > 0) {
+      updatedImages[0].featured = true
+    }
+    
+    onImagesChange(updatedImages)
   }
 
   const moveImage = (fromIndex: number, toIndex: number) => {
@@ -310,6 +352,14 @@ export default function MultipleImageUploader({
     const [movedImage] = newImages.splice(fromIndex, 1)
     newImages.splice(toIndex, 0, movedImage)
     onImagesChange(newImages)
+  }
+
+  const setFeaturedImage = (imageId: string) => {
+    const updatedImages = images.map(img => ({
+      ...img,
+      featured: img.id === imageId
+    }));
+    onImagesChange(updatedImages);
   }
 
   // Group images by base filename to show them together
@@ -484,7 +534,17 @@ export default function MultipleImageUploader({
                       </div>
                       
                       {/* Image overlay with controls */}
-                      <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => setFeaturedImage(image.id)}
+                          className={`p-1 ${image.featured ? 'bg-yellow-500' : 'bg-gray-500'} bg-opacity-70 rounded-full text-white hover:bg-opacity-90`}
+                          title={image.featured ? "Featured Image" : "Set as Featured"}
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        </button>
                         <button
                           type="button"
                           onClick={() => removeImage(image.id)}
@@ -496,6 +556,13 @@ export default function MultipleImageUploader({
                           </svg>
                         </button>
                       </div>
+                      
+                      {/* Add featured indicator */}
+                      {image.featured && (
+                        <div className="absolute top-1 left-1 px-2 py-1 bg-yellow-500 bg-opacity-90 rounded text-white text-xs font-medium">
+                          ★ Featured
+                        </div>
+                      )}
                       
                       {/* Aspect ratio label */}
                       <div className="absolute bottom-1 left-1 right-1">

@@ -1,0 +1,23 @@
+meta {
+  name: Get Customer Story by Slug
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/customerstories
+  body: none
+}
+
+query {
+  slug: story-slug
+}
+
+docs {
+  name: Get Customer Story by Slug API
+  desc: Get a specific customer story by its slug
+
+  params {
+    slug: URL-friendly slug of the customer story (required)
+  }
+} 

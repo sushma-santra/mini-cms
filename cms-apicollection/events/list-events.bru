@@ -1,0 +1,39 @@
+meta {
+  name: List Events
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/events
+  body: none
+}
+
+query {
+  page: 1
+  limit: 20
+}
+
+docs {
+  name: List Events API
+  desc: |
+    Get a paginated list of events.
+    Returns events sorted by start date, with upcoming events first.
+    
+    Response includes:
+    - Event details (title, dates, location)
+    - Venue and booth information
+    - External links and join links
+    - Event map embeds (if available)
+    - Event highlights
+    - Author information
+    
+    Use the search parameter to filter events by title, location, or details.
+    Events can be filtered by status (default: PUBLISHED).
+
+  params:
+    page: Page number (default: 1)
+    limit: Items per page (default: 20, max: 100)
+    search: Optional search term to filter events
+    status: Event status filter (DRAFT, PUBLISHED) - Admin only
+} 

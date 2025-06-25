@@ -1,0 +1,29 @@
+meta {
+  name: Filter Customer Stories by Industry
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/customerstories
+  body: none
+}
+
+query {
+  industry: TEAM
+  solutions: DIGITAL_PLATFORMS
+  page: 1
+  limit: 10
+}
+
+docs {
+  name: Filter Customer Stories API
+  desc: Get customer stories filtered by industry and solutions
+
+  params {
+    industry: Industry filter (e.g., TEAM, PUBLISHERS, GAMING_OPERATORS)
+    solutions: Solution filter (e.g., DIGITAL_PLATFORMS, VIDEO_PRODUCTION)
+    page: Page number (default: 1)
+    limit: Items per page (default: 10, max: 50)
+  }
+} 

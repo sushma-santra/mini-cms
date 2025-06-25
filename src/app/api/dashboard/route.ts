@@ -10,42 +10,40 @@ export async function GET(request: NextRequest) {
 
     const whereClause = user.role === 'ADMIN' ? {} : { authorId: user.id }
 
-    // Get post statistics
-    const [
-      totalPosts,
-      publishedPosts,
-      draftPosts,
-      recentPosts,
-      totalCustomerStories,
-      publishedCustomerStories,
-      draftCustomerStories
-    ] = await Promise.all([
+    // Define all data fetching promises
+    const promises: any[] = [
       prisma.post.count({ where: whereClause }),
       prisma.post.count({ where: { ...whereClause, status: 'PUBLISHED' } }),
       prisma.post.count({ where: { ...whereClause, status: 'DRAFT' } }),
       prisma.post.findMany({
         where: whereClause,
-        include: {
-          author: {
-            select: { id: true, name: true, email: true },
-          },
-        },
+        include: { author: { select: { id: true, name: true, email: true } }, category: { select: { name: true } } },
         orderBy: { updatedAt: 'desc' },
         take: 5,
       }),
       prisma.customerStory.count({ where: whereClause }),
       prisma.customerStory.count({ where: { ...whereClause, status: 'PUBLISHED' } }),
-      prisma.customerStory.count({ where: { ...whereClause, status: 'DRAFT' } })
-    ])
+      prisma.customerStory.count({ where: { ...whereClause, status: 'DRAFT' } }),
+      prisma.event.count({ where: whereClause }),
+      prisma.event.count({ where: { ...whereClause, status: 'PUBLISHED' } }),
+      prisma.event.count({ where: { ...whereClause, status: 'DRAFT' } }),
+      prisma.event.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          title: true,
+          start_date: true,
+          end_date: true,
+          status: true,
+          author: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: [{ start_date: 'asc' }, { updatedAt: 'desc' }],
+        take: 5,
+      }),
+    ]
 
-    // Get admin-only statistics
-    let totalCategories = 0
-    let totalTags = 0
-    let totalUsers = 0
-    let authorStats: any[] = []
-    
     if (user.role === 'ADMIN') {
-      const [categories, tags, users, authors] = await Promise.all([
+      promises.push(
         prisma.category.count(),
         prisma.tag.count(),
         prisma.user.count(),
@@ -57,22 +55,43 @@ export async function GET(request: NextRequest) {
             _count: {
               select: {
                 posts: true,
+                customerStories: true,
+                events: true,
               },
             },
           },
-          orderBy: {
-            posts: {
-              _count: 'desc',
-            },
-          },
+          orderBy: { posts: { _count: 'desc' } },
           take: 5,
         })
-      ])
-      
-      totalCategories = categories
-      totalTags = tags
-      totalUsers = users
-      authorStats = authors
+      )
+    }
+
+    const results = await Promise.all(promises)
+
+    // Destructure results
+    let resultIndex = 0
+    const totalPosts = results[resultIndex++]
+    const publishedPosts = results[resultIndex++]
+    const draftPosts = results[resultIndex++]
+    const recentPosts = results[resultIndex++]
+    const totalCustomerStories = results[resultIndex++]
+    const publishedCustomerStories = results[resultIndex++]
+    const draftCustomerStories = results[resultIndex++]
+    const totalEvents = results[resultIndex++]
+    const publishedEvents = results[resultIndex++]
+    const draftEvents = results[resultIndex++]
+    const recentEvents = results[resultIndex++]
+
+    let totalCategories = 0,
+      totalTags = 0,
+      totalUsers = 0,
+      authorStats: any[] = []
+
+    if (user.role === 'ADMIN') {
+      totalCategories = results[resultIndex++]
+      totalTags = results[resultIndex++]
+      totalUsers = results[resultIndex++]
+      authorStats = results[resultIndex++]
     }
 
     return NextResponse.json({
@@ -83,12 +102,16 @@ export async function GET(request: NextRequest) {
         totalCustomerStories,
         publishedCustomerStories,
         draftCustomerStories,
-        totalCategories: user.role === 'ADMIN' ? totalCategories : null,
-        totalTags: user.role === 'ADMIN' ? totalTags : null,
-        totalUsers: user.role === 'ADMIN' ? totalUsers : null,
+        totalEvents,
+        publishedEvents,
+        draftEvents,
+        totalCategories: user.role === 'ADMIN' ? totalCategories : 0,
+        totalTags: user.role === 'ADMIN' ? totalTags : 0,
+        totalUsers: user.role === 'ADMIN' ? totalUsers : 0,
       },
       recentPosts,
-      authorStats: user.role === 'ADMIN' ? authorStats : null,
+      recentEvents,
+      authorStats: user.role === 'ADMIN' ? authorStats : [],
       userRole: user.role,
     })
   } catch (error) {

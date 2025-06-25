@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
-import { generateSlug, generateExcerpt } from '@/lib/utils'
+import { generateSlug } from '@/lib/utils'
 import { z } from 'zod'
 import { successResponse, errorResponse, createPagination } from '@/lib/api-response'
+import { Prisma } from '@prisma/client'
 
 // Custom URL validator that accepts both absolute and relative URLs
 const urlSchema = z.string().refine(
@@ -18,7 +19,14 @@ const urlSchema = z.string().refine(
       }
     }
     // Accept relative URLs that start with / and contain no spaces
-    return url.startsWith('/') && !url.includes(' ')
+    if (url.startsWith('/') && !url.includes(' ')) {
+      return true
+    }
+    // Accept URLs that start with 'images/' (uploaded images)
+    if (url.startsWith('images/') && !url.includes(' ')) {
+      return true
+    }
+    return false
   },
   { message: 'Invalid URL' }
 )
@@ -33,7 +41,8 @@ const baseCustomerStorySchema = z.object({
     aspectRatio: z.string(),
     baseFilename: z.string().optional(),
     originalUrl: urlSchema.optional(),
-    isExisting: z.boolean().optional()
+    isExisting: z.boolean().optional(),
+    featured: z.boolean().optional()
   })).optional(),
   clientLogos: z.array(z.object({
     url: urlSchema,
@@ -285,7 +294,9 @@ export async function POST(request: NextRequest) {
       validatedData = createCustomerStorySchema.parse(body)
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse('Invalid input', 400)
+        console.error('Customer story validation error:', error.errors)
+        console.error('Request body:', JSON.stringify(body, null, 2))
+        return errorResponse('Invalid input', 400, { details: error.errors })
       }
       throw error
     }
@@ -319,6 +330,38 @@ export async function POST(request: NextRequest) {
       contentSections: validatedData.contentSections
     }
 
+    // Enforce only one featured image in mediaGallery
+    if (customerStoryData.mediaGallery && Array.isArray(customerStoryData.mediaGallery) && customerStoryData.mediaGallery.length > 0) {
+      let found = false;
+      customerStoryData.mediaGallery = customerStoryData.mediaGallery.map(img => {
+        if (img.featured && !found) {
+          found = true;
+          return { ...img, featured: true };
+        }
+        return { ...img, featured: false };
+      });
+      if (!found) {
+        customerStoryData.mediaGallery[0].featured = true;
+      }
+    } else {
+      // Only set to empty array if it's undefined/null, not if it's already an array
+      if (!customerStoryData.mediaGallery) {
+        customerStoryData.mediaGallery = [];
+      }
+    }
+
+    // Ensure other arrays are properly handled
+    if (!Array.isArray(customerStoryData.stats)) customerStoryData.stats = [];
+    if (!Array.isArray(customerStoryData.clientLogos)) customerStoryData.clientLogos = [];
+    if (!Array.isArray(customerStoryData.contentSections)) customerStoryData.contentSections = [];
+
+    console.log('DEBUG: Final customerStoryData before save:', {
+      ...customerStoryData,
+      mediaGallery: customerStoryData.mediaGallery?.length || 0,
+      stats: customerStoryData.stats?.length || 0,
+      contentSections: customerStoryData.contentSections?.length || 0
+    })
+
     try {
       const customerStory = await prisma.customerStory.create({
         data: customerStoryData,
@@ -335,6 +378,106 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Create customer story error:', error)
+    return errorResponse(
+      error instanceof Error ? error.message : 'Unknown error'
+    )
+  }
+}
+
+// PUT /api/customerstories - Update an existing customer story
+export async function PUT(request: NextRequest) {
+  try {
+    const user = await requireAuth(request)
+    const body = await request.json()
+    
+    let validatedData;
+    try {
+      validatedData = updateCustomerStorySchema.parse(body)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return errorResponse('Invalid input', 400)
+      }
+      throw error
+    }
+
+    // Find the existing customer story
+    const customerStory = await prisma.customerStory.findUnique({
+      where: { id: body.id },
+      include: {
+        author: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    })
+
+    if (!customerStory) {
+      return errorResponse('Customer story not found', 404)
+    }
+
+    // Process mediaGallery to ensure featured image logic and proper type handling
+    let processedMediaGallery = validatedData.mediaGallery || customerStory.mediaGallery
+    
+    // Enforce only one featured image in mediaGallery
+    if (Array.isArray(processedMediaGallery) && processedMediaGallery.length > 0) {
+      let found = false;
+      processedMediaGallery = processedMediaGallery.map((img: any) => {
+        if (img && typeof img === 'object' && 'featured' in img) {
+          if (img.featured && !found) {
+            found = true;
+            return { ...img, featured: true };
+          }
+          return { ...img, featured: false };
+        }
+        return img;
+      });
+      
+      // If no featured image found, set the first one as featured
+      if (!found && processedMediaGallery.length > 0 && typeof processedMediaGallery[0] === 'object' && processedMediaGallery[0] !== null) {
+        processedMediaGallery[0] = { ...processedMediaGallery[0], featured: true };
+      }
+    }
+
+    // Update the customer story data
+    const updateData: any = {
+      title: validatedData.title || customerStory.title,
+      date: validatedData.date || customerStory.date,
+      caption: validatedData.caption || customerStory.caption,
+      description: validatedData.description || customerStory.description,
+      mediaGallery: processedMediaGallery,
+      clientLogos: validatedData.clientLogos || customerStory.clientLogos,
+      stats: validatedData.stats || customerStory.stats,
+      contentSections: validatedData.contentSections || customerStory.contentSections,
+      seoTitle: validatedData.seoTitle || customerStory.seoTitle,
+      seoDescription: validatedData.seoDescription || customerStory.seoDescription,
+      status: validatedData.status || customerStory.status,
+      externalLink: validatedData.externalLink || customerStory.externalLink,
+      industry: validatedData.industry || customerStory.industry,
+      solutions: validatedData.solutions || customerStory.solutions,
+    }
+
+    // Ensure arrays are properly handled - only reset if truly null/undefined
+    if (!updateData.mediaGallery) updateData.mediaGallery = []
+    if (!Array.isArray(updateData.stats)) updateData.stats = []
+    if (!Array.isArray(updateData.clientLogos)) updateData.clientLogos = []
+    if (!Array.isArray(updateData.contentSections)) updateData.contentSections = []
+
+    try {
+      const updatedCustomerStory = await prisma.customerStory.update({
+        where: { id: body.id },
+        data: updateData,
+        include: {
+          author: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      })
+      
+      return successResponse(updatedCustomerStory, 'Customer story updated successfully')
+    } catch (dbError) {
+      throw dbError
+    }
+  } catch (error) {
+    console.error('Update customer story error:', error)
     return errorResponse(
       error instanceof Error ? error.message : 'Unknown error'
     )

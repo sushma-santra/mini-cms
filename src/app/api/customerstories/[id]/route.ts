@@ -15,7 +15,8 @@ const updateCustomerStorySchema = z.object({
     aspectRatio: z.string(),
     baseFilename: z.string().optional(),
     originalUrl: z.string().optional(),
-    isExisting: z.boolean().optional()
+    isExisting: z.boolean().optional(),
+    featured: z.boolean().optional()
   })).optional(),
   stats: z.array(z.object({
     label: z.string().min(1),
@@ -194,18 +195,32 @@ export async function PUT(
     }
 
     // Handle media gallery
-    if (data.mediaGallery !== undefined) {
-      if (data.mediaGallery.length > 0) {
-        const newImages = data.mediaGallery.filter(img => !img.isExisting)
-        updateData.mediaGallery = newImages.map(img => ({
-          url: img.url,
-          aspectRatio: img.aspectRatio,
-          baseFilename: img.baseFilename,
-          originalUrl: img.originalUrl
-        }))
-      } else {
-        updateData.mediaGallery = []
+    if (data.mediaGallery && Array.isArray(data.mediaGallery)) {
+      // Preserve existing images and handle featured logic
+      updateData.mediaGallery = data.mediaGallery.map((img: any) => ({
+        url: img.url,
+        aspectRatio: img.aspectRatio,
+        baseFilename: img.baseFilename,
+        originalUrl: img.originalUrl,
+        featured: img.featured || false
+      }));
+      
+      // Ensure only one featured image
+      let hasFeatured = false;
+      updateData.mediaGallery = updateData.mediaGallery.map((img: any) => {
+        if (img.featured && !hasFeatured) {
+          hasFeatured = true;
+          return { ...img, featured: true };
+        }
+        return { ...img, featured: false };
+      });
+      
+      // If no featured image, make first one featured
+      if (!hasFeatured && updateData.mediaGallery.length > 0) {
+        updateData.mediaGallery[0].featured = true;
       }
+    } else {
+      updateData.mediaGallery = [];
     }
 
     // Handle client logos

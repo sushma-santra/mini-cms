@@ -184,9 +184,15 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
           aspectRatio: img.aspectRatio || 'free',
           baseFilename: img.baseFilename || undefined,
           originalUrl: img.originalUrl || undefined,
+          featured: img.featured || false,  // Preserve featured status
           isExisting: true
         })
       })
+    }
+    
+    // If no featured image is marked, set the first image as featured
+    if (initialImages.length > 0 && !initialImages.some(img => img.featured)) {
+      initialImages[0].featured = true
     }
     
     return initialImages
@@ -319,6 +325,17 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
     'color', 'background', 'font', 'align', 'link', 'image', 'video'
   ]
 
+  // Add handleImagesChange function to properly manage featured status
+  const handleImagesChange = (newImages: UploadedImage[]) => {
+    // Ensure only one image is featured
+    const featuredImage = newImages.find(img => img.featured)
+    if (!featuredImage && newImages.length > 0) {
+      // If no image is featured, mark the first one
+      newImages[0].featured = true
+    }
+    setImages(newImages)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -341,8 +358,19 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
     // Validate stats (remove empty ones)
     const validStats = stats.filter(stat => stat.label.trim() && stat.value.trim())
     
-    // Filter out invalid or empty images
-    const validImages = images.filter(img => img.url && img.url.trim() !== '')
+    // Filter out invalid or empty images and ensure only one featured image
+    let validImages = images.filter(img => img.url && img.url.trim() !== '')
+    
+    // Ensure only one image is featured
+    const featuredImages = validImages.filter(img => img.featured)
+    if (featuredImages.length > 1) {
+      validImages = validImages.map(img => ({
+        ...img,
+        featured: img.id === featuredImages[0].id
+      }))
+    } else if (featuredImages.length === 0 && validImages.length > 0) {
+      validImages[0].featured = true
+    }
     
     // Filter out invalid or empty client logos
     const validClientLogos = clientLogos.filter(logo => logo.url && logo.url.trim() !== '')
@@ -362,6 +390,7 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
         aspectRatio: img.aspectRatio,
         baseFilename: img.baseFilename,
         originalUrl: img.originalUrl,
+        featured: img.featured || false,  // Include featured status
         isExisting: img.isExisting || false
       })),
       clientLogos: validClientLogos.map(logo => ({
@@ -374,6 +403,8 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
       industry,
       solutions,
     }
+
+
 
     if (onSave) {
       try {
@@ -513,7 +544,7 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
               <h3 className="text-sm font-semibold text-gray-900 mb-4">Media Gallery</h3>
               <MultipleImageUploader
                 images={images}
-                onImagesChange={setImages}
+                onImagesChange={handleImagesChange}
                 maxImages={10}
               />
             </div>

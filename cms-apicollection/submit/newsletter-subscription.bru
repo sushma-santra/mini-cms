@@ -1,0 +1,40 @@
+meta {
+  name: Subscribe to Newsletter
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/submit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "module_name": "newsletter",
+    "email": "john.doe@example.com",
+    "captcha": "<recaptcha-token>"
+  }
+}
+
+docs {
+  name: Newsletter Subscription API
+  desc: |
+    Subscribe to the newsletter. Requires reCAPTCHA verification.
+    Simple form that collects email address for newsletter subscription.
+    
+    Response:
+    - 200: Subscription successful
+    - 400: Validation error or invalid captcha
+    - 500: Server error
+
+  params:
+    module_name: Type of form submission (required, must be "newsletter")
+    email: Valid email address (required)
+    captcha: Valid reCAPTCHA token (required)
+} 

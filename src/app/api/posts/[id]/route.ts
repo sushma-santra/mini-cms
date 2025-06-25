@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
-import { generateSlug, generateExcerpt } from '@/lib/utils'
+import { generateSlug } from '@/lib/utils'
 import { z } from 'zod'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
@@ -15,7 +15,8 @@ const updatePostSchema = z.object({
     aspectRatio: z.string(),
     baseFilename: z.string().optional(),
     originalUrl: z.string().optional(),
-    isExisting: z.boolean().optional()
+    isExisting: z.boolean().optional(),
+    featured: z.boolean().optional()
   })).optional(),
   categoryId: z.string().min(1, "Category is required").optional(),
   tags: z.array(z.string()).optional(),
@@ -126,27 +127,31 @@ export async function PUT(
       }
     }
 
+    // Handle images field - explicitly clear if empty array
+    if (Array.isArray(data.images)) {
+      if (data.images.length > 0) {
+        // Enforce only one featured image
+        let found = false;
+        updateData.images = data.images.map(img => {
+          if (img.featured && !found) {
+            found = true;
+            return { ...img, featured: true };
+          }
+          return { ...img, featured: false };
+        });
+        // If none were featured, make the first one featured
+        if (!found) updateData.images[0].featured = true;
+      } else {
+        updateData.images = []
+        updateData.featuredImage = null
+      }
+    }
+
     // Handle tags if provided
     if (data.tags) {
       updateData.tags = {
         set: [], // Clear existing connections
         connect: data.tags.map(tagId => ({ id: tagId }))
-      }
-    }
-
-    // Handle images field - explicitly clear if empty array
-    if (Array.isArray(data.images)) {
-      if (data.images.length > 0) {
-        // Filter to only include new images that aren't marked as existing
-        const newImages = data.images.filter(img => !img.isExisting)
-        updateData.images = newImages.map(img => ({
-          url: img.url,
-          aspectRatio: img.aspectRatio,
-          baseFilename: img.baseFilename,
-          originalUrl: img.originalUrl
-        }))
-      } else {
-        updateData.images = []
       }
     }
 
@@ -164,7 +169,7 @@ export async function PUT(
       },
     })
 
-    return successResponse(post, 'Post updated successfully')
+    return NextResponse.json({ success: true, message: 'Post updated successfully', data: post })
   } catch (error) {
     console.error('Update post error:', error)
     return errorResponse(

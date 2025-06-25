@@ -1,0 +1,56 @@
+meta {
+  name: Submit Contact Form
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/submit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "module_name": "contacts",
+    "first_name": "Jane",
+    "last_name": "Smith",
+    "organisation": "Beta Inc",
+    "type_of_organisation": "Startup",
+    "country": "India",
+    "phone_number": "+91-1234567890",
+    "email": "jane.smith@example.com",
+    "message": "I would like to know more about your services.",
+    "privacy_policy": true,
+    "captcha": "<recaptcha-token>"
+  }
+}
+
+docs {
+  name: Contact Form Submission API
+  desc: |
+    Submit a contact form. Requires reCAPTCHA verification.
+    Collects detailed information for business inquiries and contact requests.
+    
+    Response:
+    - 200: Submission successful
+    - 400: Validation error or invalid captcha
+    - 500: Server error
+
+  params:
+    module_name: Type of form submission (required, must be "contacts")
+    first_name: Contact person's first name (required)
+    last_name: Contact person's last name (required)
+    organisation: Company or organization name (required)
+    type_of_organisation: Type of organization (e.g., Startup, Enterprise)
+    country: Contact's country (required)
+    phone_number: Valid phone number with country code
+    email: Valid email address (required)
+    message: Inquiry or message content (required)
+    privacy_policy: Must be true to accept privacy policy (required)
+    captcha: Valid reCAPTCHA token (required)
+} 

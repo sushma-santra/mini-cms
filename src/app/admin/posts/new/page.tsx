@@ -24,22 +24,30 @@ export default function NewPostPage() {
   const handleSave = async (data: any) => {
     setIsLoading(true)
     try {
+      const postData = {
+        ...data,
+        status: data.status || 'DRAFT'
+      }
+
+      console.log('Creating new post:', postData)
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(postData),
       })
 
       const responseData: ApiResponse = await response.json()
 
+      console.log('DEBUG: backend response after save:', responseData)
+
       if (responseData.success) {
-        toast.success(responseData.message)
+        toast.success(responseData.message || 'Post created successfully')
         router.push('/admin/posts')
       } else {
-        toast.error(responseData.message)
+        toast.error(responseData.message || 'Failed to create post')
       }
     } catch (error) {
       console.error('Error creating post:', error)

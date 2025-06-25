@@ -1,0 +1,29 @@
+meta {
+  name: Get Content by Slug
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/content
+  body: none
+}
+
+query {
+  cat: blogs
+  slug: my-blog-post-title
+  relatedcontent: true
+  limit: 5
+}
+
+docs {
+  name: Get Content by Slug API
+  desc: Get a specific content item by its slug with optional related content
+
+  params {
+    cat: Category of the content (required)
+    slug: URL-friendly slug of the content (required)
+    relatedcontent: Include related content based on shared tags (optional)
+    limit: Number of related content items to return (optional, default: 5)
+  }
+} 

@@ -1,0 +1,38 @@
+meta {
+  name: List Customer Stories
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/customerstories
+  body: none
+}
+
+query {
+  page: 1
+  limit: 10
+}
+
+docs {
+  name: List Customer Stories API
+  desc: |
+    Get a paginated list of customer success stories.
+    Returns stories sorted by publish date in descending order.
+    
+    Response includes:
+    - Story basic information (title, slug, date)
+    - Industry and solutions tags
+    - Author information
+    - Media gallery (if available)
+    - SEO metadata
+    
+    Use additional filters like industry and solutions to narrow down results.
+    Each story can be associated with multiple solutions but only one industry.
+
+  params:
+    page: Page number (default: 1)
+    limit: Items per page (default: 10, max: 50)
+    industry: Optional industry filter (e.g., TEAM, PUBLISHERS)
+    solutions: Optional solutions filter (e.g., DIGITAL_PLATFORMS)
+} 

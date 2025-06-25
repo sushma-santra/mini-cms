@@ -1,0 +1,35 @@
+meta {
+  name: Get Content with Related Items
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/content
+  body: none
+}
+
+query {
+  cat: case-studies
+  slug: my-case-study
+  relatedcontent: true
+  limit: 3
+}
+
+docs {
+  name: Get Content with Related Items API
+  desc: Get a specific content item along with related content based on shared tags
+
+  params {
+    cat: Category of the content (blogs, case-studies, media)
+    slug: URL-friendly slug of the content
+    relatedcontent: Set to true to include related content
+    limit: Number of related content items to return (default: 3)
+  }
+
+  examples {
+    blogs: /api/content?cat=blogs&slug=my-blog-post-title&relatedcontent=true
+    with-limit: /api/content?cat=blogs&slug=my-blog-post-title&relatedcontent=true&limit=5
+    case-study: /api/content?cat=case-studies&slug=my-case-study&relatedcontent=true&limit=3
+  }
+} 
