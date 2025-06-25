@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { logger } from './logger'
 
+const ZOHO_PUSH_ENABLED = process.env.ZOHO_PUSH_ENABLED !== 'false';
+
 interface ZohoTokens {
   access_token: string
   refresh_token: string
@@ -133,6 +135,10 @@ class ZohoAPI {
   }
 
   public async pushToZoho(formData: any, moduleName: string): Promise<void> {
+    if (!ZOHO_PUSH_ENABLED) {
+      logger.info('Zoho CRM push is disabled by config. Skipping push.', { moduleName });
+      return;
+    }
     try {
       const accessToken = await this.ensureValidToken()
       const zohoData = this.mapFormDataToZohoLead(formData, moduleName)
