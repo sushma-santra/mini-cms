@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyRecaptcha } from '@/lib/recaptcha';
-import { submissionSchema } from '@/lib/form-validation';
+import { submissionSchema, cvFileSchema } from '@/lib/form-validation';
 import { z } from 'zod';
 import { zohoAPI } from '@/lib/zoho-api';
 import { logger } from '@/lib/logger';
 import { handleCorsPreflightRequest, createCorsResponse } from '@/lib/cors';
+import { uploadFile, getS3CvKey, getRelativePath } from '@/lib/s3';
 
 // Handle preflight OPTIONS requests
 export async function OPTIONS(request: Request) {
@@ -14,11 +15,62 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    // Parse request body
-    const body = await request.json();
+    let body: any;
+    let cvFile: File | null = null;
+    
+    // Check if request contains FormData (for careers with file upload)
+    const contentType = request.headers.get('content-type') || '';
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData for careers module with file upload
+      const formData = await request.formData();
+      
+      // Extract form fields
+      body = {
+        module_name: formData.get('module_name') as string,
+        first_name: formData.get('first_name') as string,
+        last_name: formData.get('last_name') as string,
+        email: formData.get('email') as string,
+        job_title: formData.get('job_title') as string,
+        captcha: formData.get('captcha') as string,
+      };
+      
+      // Extract CV file if present
+      cvFile = formData.get('cv_file') as File;
+      
+      // Remove empty string values (convert to undefined for optional fields)
+      Object.keys(body).forEach(key => {
+        if (body[key] === '' || body[key] === 'undefined') {
+          body[key] = undefined;
+        }
+      });
+    } else {
+      // Handle JSON for existing modules (ebook, newsletter, contacts)
+      body = await request.json();
+    }
 
     // Validate submission data
     const validatedData = submissionSchema.parse(body);
+
+    // Additional validation for careers module with CV file
+    if (validatedData.module_name === 'careers' && cvFile) {
+      // Validate file if present
+      const fileValidation = cvFileSchema.safeParse({
+        name: cvFile.name,
+        size: cvFile.size,
+        type: cvFile.type,
+      });
+      
+      if (!fileValidation.success) {
+        return NextResponse.json({
+          success: false,
+          message: "File validation failed",
+          data: fileValidation.error.errors,
+          pagination: {},
+          filters: {}
+        }, { status: 400 });
+      }
+    }
 
     // Verify reCAPTCHA
     const isValidCaptcha = await verifyRecaptcha(validatedData.captcha);
@@ -99,6 +151,55 @@ export async function POST(request: Request) {
               data: contactData
             });
           });
+        break;
+      }
+
+      case 'careers': {
+        const { module_name, captcha, ...careersData } = validatedData;
+        let cvFileUrl: string | undefined;
+        
+        // Handle CV file upload if present
+        if (cvFile) {
+          try {
+            // Generate unique filename for CV
+            const timestamp = Date.now();
+            const randomString = Math.random().toString(36).substring(2, 15);
+            const extension = cvFile.name.split('.').pop();
+            const fileName = `${timestamp}-${randomString}.${extension}`;
+            
+            // Upload to S3 and get relative path
+            const s3Key = getS3CvKey(fileName);
+            await uploadFile(cvFile, s3Key);
+            cvFileUrl = getRelativePath(s3Key);
+          } catch (uploadError) {
+            logger.error('Failed to upload CV file:', {
+              error: uploadError instanceof Error ? uploadError.message : 'Unknown upload error',
+              fileName: cvFile.name
+            });
+            
+            return NextResponse.json({
+              success: false,
+              message: "Failed to upload CV file",
+              data: [],
+              pagination: {},
+              filters: {}
+            }, { status: 500 });
+          }
+        }
+        
+        // Save career submission to database
+        await prisma.careerSubmission.create({
+          data: {
+            firstName: careersData.first_name,
+            lastName: careersData.last_name,
+            email: careersData.email,
+            jobTitle: careersData.job_title,
+            cvFileUrl: cvFileUrl,
+          },
+        });
+
+        // Note: Zoho integration is disabled as per requirements
+        // Can be enabled later if needed
         break;
       }
     }

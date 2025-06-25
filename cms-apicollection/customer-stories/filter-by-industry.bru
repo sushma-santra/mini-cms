@@ -10,8 +10,8 @@ get {
 }
 
 query {
-  industry: TEAM
-  solutions: DIGITAL_PLATFORMS
+  industry: LEAGUES_AND_FEDERATIONS
+  solutions: GAMING_AND_FAN_LOYALTY
   page: 1
   limit: 10
 }
@@ -21,8 +21,8 @@ docs {
   desc: Get customer stories filtered by industry and solutions
 
   params {
-    industry: Industry filter (e.g., TEAM, PUBLISHERS, GAMING_OPERATORS)
-    solutions: Solution filter (e.g., DIGITAL_PLATFORMS, VIDEO_PRODUCTION)
+    industry: Industry filter (e.g., LEAGUES_AND_FEDERATIONS, TEAM, PUBLISHERS, GAMING_OPERATORS)
+    solutions: Solution filter (e.g., GAMING_AND_FAN_LOYALTY, DIGITAL_PLATFORMS, DESIGN_AND_VIDEO_PRODUCTION)
     page: Page number (default: 1)
     limit: Items per page (default: 10, max: 50)
   }

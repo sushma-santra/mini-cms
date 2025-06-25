@@ -149,6 +149,10 @@ export const getS3LogoKey = (filename: string): string => {
   return `stg/assets/waf-images/uploads/logos/${filename}`
 }
 
+export const getS3CvKey = (filename: string): string => {
+  return `stg/static-assets/uploadfile/resumes/${filename}`
+}
+
 // Helper function to get relative path from S3 key
 export const getRelativePath = (s3Key: string): string => {
   // Remove the base path and return only the relative part

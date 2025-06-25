@@ -164,6 +164,19 @@ model Event {
   @@map("events")
 }
 
+model CareerSubmission {
+  id        String   @id @default(cuid())
+  firstName String   @db.VarChar(100)
+  lastName  String   @db.VarChar(100)
+  email     String   @db.VarChar(255)
+  jobTitle  String?  @db.VarChar(200)
+  cvFileUrl String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("career_submissions")
+}
+
 model NewsletterSubscription {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -182,31 +195,19 @@ enum PostStatus {
 }
 
 enum Industry {
+  LEAGUES_AND_FEDERATIONS
   TEAM
   BROADCASTERS_AND_OTT_PLATFORMS
   PUBLISHERS
   GAMING_OPERATORS
-  VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION
-  DIGITAL_PLATFORMS
-  FAN_DATA_AND_CRM_CONSULTING
-  MARKETING_AND_COMMUNITY
-  GAMING_AND_FAN_LOYALTY
-  MANAGEMENT
-  VIDEO_PRODUCTION
-  SPORTS_DATA_SOLUTIONS
 }
 
 enum Solution {
-  TEAM
-  BROADCASTERS_AND_OTT_PLATFORMS
-  PUBLISHERS
-  GAMING_OPERATORS
-  VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION
-  DIGITAL_PLATFORMS
-  FAN_DATA_AND_CRM_CONSULTING
-  MARKETING_AND_COMMUNITY
   GAMING_AND_FAN_LOYALTY
-  MANAGEMENT
-  VIDEO_PRODUCTION
+  DIGITAL_PLATFORMS
+  VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION
+  FAN_DATA_AND_CRM_CONSULTING
+  MARKETING_AND_COMMUNITY_MANAGEMENT
+  DESIGN_AND_VIDEO_PRODUCTION
   SPORTS_DATA_SOLUTIONS
 }

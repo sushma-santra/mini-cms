@@ -43,18 +43,14 @@ GET /api/customerstories
 
 ### Available Industry Values
 ```
-TEAM, BROADCASTERS_AND_OTT_PLATFORMS, PUBLISHERS, GAMING_OPERATORS, 
-VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION, DIGITAL_PLATFORMS, 
-FAN_DATA_AND_CRM_CONSULTING, MARKETING_AND_COMMUNITY, GAMING_AND_FAN_LOYALTY, 
-MANAGEMENT, VIDEO_PRODUCTION, SPORTS_DATA_SOLUTIONS
+LEAGUES_AND_FEDERATIONS, TEAM, BROADCASTERS_AND_OTT_PLATFORMS, PUBLISHERS, GAMING_OPERATORS
 ```
 
 ### Available Solution Values
 ```
-TEAM, BROADCASTERS_AND_OTT_PLATFORMS, PUBLISHERS, GAMING_OPERATORS, 
-VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION, DIGITAL_PLATFORMS, 
-FAN_DATA_AND_CRM_CONSULTING, MARKETING_AND_COMMUNITY, GAMING_AND_FAN_LOYALTY, 
-MANAGEMENT, VIDEO_PRODUCTION, SPORTS_DATA_SOLUTIONS
+GAMING_AND_FAN_LOYALTY, DIGITAL_PLATFORMS, VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION, 
+FAN_DATA_AND_CRM_CONSULTING, MARKETING_AND_COMMUNITY_MANAGEMENT, DESIGN_AND_VIDEO_PRODUCTION, 
+SPORTS_DATA_SOLUTIONS
 ```
 
 ### Example Request
@@ -81,10 +77,10 @@ GET /api/customerstories?limit=2
       "updatedAt": "2025-06-19T09:17:13.907Z",
       "mediaGallery": [],
       "externalLink": null,
-      "industry": "MANAGEMENT",
+      "industry": "LEAGUES_AND_FEDERATIONS",
       "solutions": [
-        "TEAM",
-        "PUBLISHERS", 
+        "GAMING_AND_FAN_LOYALTY",
+        "DIGITAL_PLATFORMS", 
         "FAN_DATA_AND_CRM_CONSULTING"
       ],
       "author": {
@@ -245,7 +241,7 @@ GET /api/customerstories?industry=TEAM
       "industry": "TEAM",
       "solutions": [
         "VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION",
-        "GAMING_OPERATORS"
+        "GAMING_AND_FAN_LOYALTY"
       ],
       "author": {
         "id": "cmc05x6h00000vha1u4cqf08r",
@@ -307,7 +303,7 @@ GET /api/customerstories?industry={industry}&solutions={solution}
 
 ### Example Request
 ```http
-GET /api/customerstories?industry=MANAGEMENT&solutions=FAN_DATA_AND_CRM_CONSULTING
+GET /api/customerstories?industry=LEAGUES_AND_FEDERATIONS&solutions=FAN_DATA_AND_CRM_CONSULTING
 ```
 
 ### Example Response
@@ -329,10 +325,10 @@ GET /api/customerstories?industry=MANAGEMENT&solutions=FAN_DATA_AND_CRM_CONSULTI
       "updatedAt": "2025-06-19T09:17:13.907Z",
       "mediaGallery": [],
       "externalLink": null,
-      "industry": "MANAGEMENT",
+      "industry": "LEAGUES_AND_FEDERATIONS",
       "solutions": [
-        "TEAM",
-        "PUBLISHERS",
+        "GAMING_AND_FAN_LOYALTY",
+        "DIGITAL_PLATFORMS",
         "FAN_DATA_AND_CRM_CONSULTING"
       ],
       "author": {

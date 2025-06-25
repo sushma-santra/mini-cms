@@ -62,31 +62,19 @@ const baseCustomerStorySchema = z.object({
   status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
   externalLink: z.string().url("Invalid external link URL").optional(),
   industry: z.enum([
+    'LEAGUES_AND_FEDERATIONS',
     'TEAM',
     'BROADCASTERS_AND_OTT_PLATFORMS',
     'PUBLISHERS',
-    'GAMING_OPERATORS',
-    'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
-    'DIGITAL_PLATFORMS',
-    'FAN_DATA_AND_CRM_CONSULTING',
-    'MARKETING_AND_COMMUNITY',
-    'GAMING_AND_FAN_LOYALTY',
-    'MANAGEMENT',
-    'VIDEO_PRODUCTION',
-    'SPORTS_DATA_SOLUTIONS'
+    'GAMING_OPERATORS'
   ]).default('TEAM'),
   solutions: z.array(z.enum([
-    'TEAM',
-    'BROADCASTERS_AND_OTT_PLATFORMS',
-    'PUBLISHERS',
-    'GAMING_OPERATORS',
-    'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
-    'DIGITAL_PLATFORMS',
-    'FAN_DATA_AND_CRM_CONSULTING',
-    'MARKETING_AND_COMMUNITY',
     'GAMING_AND_FAN_LOYALTY',
-    'MANAGEMENT',
-    'VIDEO_PRODUCTION',
+    'DIGITAL_PLATFORMS',
+    'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
+    'FAN_DATA_AND_CRM_CONSULTING',
+    'MARKETING_AND_COMMUNITY_MANAGEMENT',
+    'DESIGN_AND_VIDEO_PRODUCTION',
     'SPORTS_DATA_SOLUTIONS'
   ])).default([]),
 })
@@ -131,18 +119,11 @@ export async function GET(request: NextRequest) {
     if (industry) {
       try {
         const validIndustry = z.enum([
+          'LEAGUES_AND_FEDERATIONS',
           'TEAM',
           'BROADCASTERS_AND_OTT_PLATFORMS',
           'PUBLISHERS',
-          'GAMING_OPERATORS',
-          'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
-          'DIGITAL_PLATFORMS',
-          'FAN_DATA_AND_CRM_CONSULTING',
-          'MARKETING_AND_COMMUNITY',
-          'GAMING_AND_FAN_LOYALTY',
-          'MANAGEMENT',
-          'VIDEO_PRODUCTION',
-          'SPORTS_DATA_SOLUTIONS'
+          'GAMING_OPERATORS'
         ]).parse(industry)
         where.industry = validIndustry
       } catch (error) {
@@ -160,17 +141,12 @@ export async function GET(request: NextRequest) {
     if (solutions && solutions.length > 0) {
       try {
         const validSolutions = z.array(z.enum([
-          'TEAM',
-          'BROADCASTERS_AND_OTT_PLATFORMS',
-          'PUBLISHERS',
-          'GAMING_OPERATORS',
-          'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
-          'DIGITAL_PLATFORMS',
-          'FAN_DATA_AND_CRM_CONSULTING',
-          'MARKETING_AND_COMMUNITY',
           'GAMING_AND_FAN_LOYALTY',
-          'MANAGEMENT',
-          'VIDEO_PRODUCTION',
+          'DIGITAL_PLATFORMS',
+          'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION',
+          'FAN_DATA_AND_CRM_CONSULTING',
+          'MARKETING_AND_COMMUNITY_MANAGEMENT',
+          'DESIGN_AND_VIDEO_PRODUCTION',
           'SPORTS_DATA_SOLUTIONS'
         ])).parse(solutions)
         where.solutions = { hasEvery: validSolutions }
@@ -355,12 +331,7 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(customerStoryData.clientLogos)) customerStoryData.clientLogos = [];
     if (!Array.isArray(customerStoryData.contentSections)) customerStoryData.contentSections = [];
 
-    console.log('DEBUG: Final customerStoryData before save:', {
-      ...customerStoryData,
-      mediaGallery: customerStoryData.mediaGallery?.length || 0,
-      stats: customerStoryData.stats?.length || 0,
-      contentSections: customerStoryData.contentSections?.length || 0
-    })
+
 
     try {
       const customerStory = await prisma.customerStory.create({

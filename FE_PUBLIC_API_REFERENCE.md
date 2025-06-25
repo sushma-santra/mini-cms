@@ -394,6 +394,36 @@ Submit forms for ebook downloads, newsletter subscriptions, or contact requests.
 }
 ```
 
+#### 4. Career Submission (Form Data)
+For career submissions with optional CV file upload, use `multipart/form-data` format:
+
+**Form Data Fields:**
+```
+module_name: careers
+first_name: John
+last_name: Doe
+email: john.doe@example.com
+job_title: Software Developer (optional)
+cv_file: [PDF/DOC/DOCX file] (optional, max 10MB)
+captcha: <recaptcha-token>
+```
+
+**Supported File Types:** PDF, DOC, DOCX  
+**Maximum File Size:** 10MB  
+**File Field Name:** `cv_file`  
+
+**Example using curl:**
+```bash
+curl -X POST http://localhost:3001/api/submit \
+  -F "module_name=careers" \
+  -F "first_name=John" \
+  -F "last_name=Doe" \
+  -F "email=john.doe@example.com" \
+  -F "job_title=Software Developer" \
+  -F "captcha=<recaptcha-token>" \
+  -F "cv_file=@/path/to/resume.pdf"
+```
+
 ### Success Response (200)
 ```json
 {
@@ -428,6 +458,40 @@ Submit forms for ebook downloads, newsletter subscriptions, or contact requests.
 ```json
 {
   "error": "Invalid captcha verification"
+}
+```
+
+### File Validation Error Response (400)
+For career submissions with invalid files:
+```json
+{
+  "success": false,
+  "message": "File validation failed",
+  "data": [
+    {
+      "code": "invalid_enum_value",
+      "options": [
+        "application/pdf",
+        "application/msword", 
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ],
+      "path": ["type"],
+      "message": "Invalid File Type. Allowed: PDF, DOC, DOCX."
+    }
+  ],
+  "pagination": {},
+  "filters": {}
+}
+```
+
+### File Upload Error Response (500)
+```json
+{
+  "success": false,
+  "message": "Failed to upload CV file",
+  "data": [],
+  "pagination": {},
+  "filters": {}
 }
 ```
 
