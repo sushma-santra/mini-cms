@@ -5,6 +5,9 @@ import dynamic from 'next/dynamic'
 import { useAuth } from '@/lib/auth-context'
 import MultipleImageUploader, { UploadedImage } from './MultipleImageUploader'
 import ClientLogoUploader, { ClientLogo } from './ClientLogoUploader'
+import { useFormValidation } from '@/hooks/useFormValidation'
+import { customerStoryValidationSchema } from '@/lib/schemas/content-validation'
+import { FieldError, FieldWrapper } from './ui/FieldError'
 
 // Import ReactQuill with simple configuration
 const ReactQuill = dynamic(() => import('react-quill'), {
@@ -43,17 +46,12 @@ const SolutionsSelector = ({ selectedSolutions, onSolutionsChange }: {
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const solutionOptions = [
-    { value: 'TEAM', label: 'Team' },
-    { value: 'BROADCASTERS_AND_OTT_PLATFORMS', label: 'Broadcasters & OTT Platforms' },
-    { value: 'PUBLISHERS', label: 'Publishers' },
-    { value: 'GAMING_OPERATORS', label: 'Gaming Operators' },
-    { value: 'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION', label: 'Video Technology & Automated Content Creation' },
-    { value: 'DIGITAL_PLATFORMS', label: 'Digital Platforms' },
-    { value: 'FAN_DATA_AND_CRM_CONSULTING', label: 'Fan Data & CRM Consulting' },
-    { value: 'MARKETING_AND_COMMUNITY', label: 'Marketing & Community' },
     { value: 'GAMING_AND_FAN_LOYALTY', label: 'Gaming & Fan Loyalty' },
-    { value: 'MANAGEMENT', label: 'Management' },
-    { value: 'VIDEO_PRODUCTION', label: 'Video Production' },
+    { value: 'DIGITAL_PLATFORMS', label: 'Digital Platforms' },
+    { value: 'VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION', label: 'Video Technology & Automated Content Creation' },
+    { value: 'FAN_DATA_AND_CRM_CONSULTING', label: 'Fan Data & CRM Consulting' },
+    { value: 'MARKETING_AND_COMMUNITY_MANAGEMENT', label: 'Marketing & Community Management' },
+    { value: 'DESIGN_AND_VIDEO_PRODUCTION', label: 'Design & Video Production' },
     { value: 'SPORTS_DATA_SOLUTIONS', label: 'Sports Data Solutions' }
   ]
 
@@ -172,6 +170,12 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
   const [externalLink, setExternalLink] = useState(initialData?.externalLink || '')
   const [industry, setIndustry] = useState(initialData?.industry || 'TEAM')
   const [solutions, setSolutions] = useState<string[]>(initialData?.solutions || [])
+
+  // Form validation
+  const validation = useFormValidation({
+    schema: customerStoryValidationSchema,
+    initialData
+  })
   const [images, setImages] = useState<UploadedImage[]>(() => {
     const initialImages: UploadedImage[] = []
     
@@ -236,6 +240,15 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
 
   const { token } = useAuth()
 
+  // Validation effect - trigger when key fields change
+  useEffect(() => {
+    // Trigger validation if we have essential fields
+    if (title.trim() || date || contentSections.some(s => s.title.trim() || s.description.trim()) || externalLink.trim()) {
+      const formData = getFormData()
+      validation.validateForm(formData)
+    }
+  }, [title, date, contentSections, externalLink, caption, seoTitle, seoDescription, industry, solutions])
+
   // Generate slug from title
   const generateSlugFromTitle = (title: string) => {
     return title
@@ -283,15 +296,12 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
   }
 
   const updateContentSection = (id: string, field: 'title' | 'description', value: string) => {
-    setContentSections(prev => {
-      const newSections = prev.map(section => {
-        if (section.id === id) {
-          return { ...section, [field]: value }
-        }
-        return section
-      })
-      return newSections
-    })
+    setContentSections(prev => prev.map(section => {
+      if (section.id === id) {
+        return { ...section, [field]: value }
+      }
+      return section
+    }))
   }
 
   const removeContentSection = (id: string) => {
@@ -336,25 +346,8 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
     setImages(newImages)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Client-side validation
-    if (!title.trim()) {
-      alert('Please enter a customer story title.')
-      return
-    }
-
-    // Validate that either content sections or external link is provided
-    const validContentSections = contentSections.filter(section => 
-      section.title.trim() && section.description.trim()
-    )
-    
-    if (!validContentSections.length && !externalLink.trim()) {
-      alert('Please either add content sections or provide an external link.')
-      return
-    }
-
+  // Form data getter helper
+  const getFormData = () => {
     // Validate stats (remove empty ones)
     const validStats = stats.filter(stat => stat.label.trim() && stat.value.trim())
     
@@ -375,44 +368,106 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
     // Filter out invalid or empty client logos
     const validClientLogos = clientLogos.filter(logo => logo.url && logo.url.trim() !== '')
     
-    const data = {
-      title,
-      slug,
-      date: new Date(date).toISOString(),
-      caption,
-      description,
+    // Validate content sections (remove empty ones)
+    const validContentSections = contentSections.filter(section => 
+      section.title.trim() && section.description.trim()
+    )
+
+    const formData = {
+      title: title.trim(),
+      slug: slug.trim(),
+      date,
+      caption: caption.trim(),
+      description: description.trim(),
       status,
       externalLink: externalLink.trim() || undefined,
-      seoTitle: seoTitle || undefined,
-      seoDescription: seoDescription || undefined,
-      mediaGallery: validImages.map(img => ({
-        url: img.url,
-        aspectRatio: img.aspectRatio,
-        baseFilename: img.baseFilename,
-        originalUrl: img.originalUrl,
-        featured: img.featured || false,  // Include featured status
-        isExisting: img.isExisting || false
-      })),
-      clientLogos: validClientLogos.map(logo => ({
-        url: logo.url,
-        name: logo.name,
-        isExisting: logo.isExisting || false
-      })),
-      stats: validStats.map(({ id, ...stat }) => stat), // Remove IDs for API
-      contentSections: validContentSections.map(({ id, ...section }) => section), // Remove IDs for API
+      seoTitle: seoTitle.trim() || undefined,
+      seoDescription: seoDescription.trim() || undefined,
       industry,
       solutions,
+      mediaGallery: validImages,
+      clientLogos: validClientLogos,
+      stats: validStats,
+      contentSections: validContentSections
     }
+    
 
+    return formData
+  }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!onSave) return
 
-    if (onSave) {
-      try {
-        await onSave(data)
-      } catch (error) {
-        console.error('Save failed:', error)
+    try {
+      const formData = getFormData()
+      
+      // Validate the form data
+      const validationResult = validation.validateForm(formData, true)
+      
+      if (!validationResult.isValid) {
+        // Validation failed - errors are already set in the validation state
+        return
       }
+
+      // Transform data for API
+      const apiData = {
+        ...formData,
+        date: new Date(formData.date).toISOString(),
+        mediaGallery: formData.mediaGallery.map(img => ({
+          url: img.url,
+          aspectRatio: img.aspectRatio,
+          baseFilename: img.baseFilename,
+          originalUrl: img.originalUrl,
+          featured: img.featured || false,
+          isExisting: img.isExisting || false
+        })),
+        clientLogos: formData.clientLogos.map(logo => ({
+          url: logo.url,
+          name: logo.name,
+          isExisting: logo.isExisting || false
+        })),
+        stats: formData.stats.map(({ id, ...stat }) => stat), // Remove IDs for API
+        contentSections: formData.contentSections.map(({ id, ...section }) => section) // Remove IDs for API
+      }
+
+      await onSave(apiData)
+    } catch (error) {
+      console.error('Save failed:', error)
+      alert('Failed to save customer story. Please try again.')
     }
+  }
+
+  // Field change handlers with validation
+  const handleTitleChange = (value: string) => {
+    setTitle(value)
+    validation.validateField('title', value.trim(), getFormData())
+  }
+
+  const handleDateChange = (value: string) => {
+    setDate(value)
+    validation.validateField('date', value, getFormData())
+  }
+
+  const handleExternalLinkChange = (value: string) => {
+    setExternalLink(value)
+    validation.validateField('externalLink', value.trim(), getFormData())
+  }
+
+  const handleCaptionChange = (value: string) => {
+    setCaption(value)
+    validation.validateField('caption', value, getFormData())
+  }
+
+  const handleSeoTitleChange = (value: string) => {
+    setSeoTitle(value)
+    validation.validateField('seoTitle', value, getFormData())
+  }
+
+  const handleSeoDescriptionChange = (value: string) => {
+    setSeoDescription(value)
+    validation.validateField('seoDescription', value, getFormData())
   }
 
   return (
@@ -447,20 +502,24 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
         
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
           {/* Title Section */}
-          <div className="space-y-2">
-            <label htmlFor="title" className="block text-sm font-semibold text-gray-900">
-              Story Title *
-            </label>
+          <FieldWrapper 
+            label="Story Title" 
+            required={true}
+            error={validation.getFieldError('title')}
+          >
             <input
               id="title"
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className={`block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border rounded-lg shadow-sm focus:ring-1 transition-colors ${
+                validation.hasFieldError('title') 
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+              }`}
               placeholder="Enter an engaging customer story title"
-              required
             />
-          </div>
+          </FieldWrapper>
 
           {/* Slug Field */}
           <div className="space-y-2">
@@ -493,19 +552,23 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
           </div>
 
           {/* Date Field */}
-          <div className="space-y-2">
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-              Story Date *
-            </label>
+          <FieldWrapper 
+            label="Story Date" 
+            required={true}
+            error={validation.getFieldError('date')}
+          >
             <input
               id="date"
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="block w-full px-4 py-3 text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
-              required
+              onChange={(e) => handleDateChange(e.target.value)}
+              className={`block w-full px-4 py-3 text-gray-900 border rounded-lg shadow-sm focus:ring-1 transition-colors ${
+                validation.hasFieldError('date') 
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+              }`}
             />
-          </div>
+          </FieldWrapper>
 
           {/* Caption Field */}
           <div className="space-y-2">
@@ -627,28 +690,34 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
           </div>
 
           {/* External Link Field */}
-          <div className="space-y-2">
-            <label htmlFor="externalLink" className="block text-sm font-medium text-gray-700">
-              External Link
-            </label>
+          <FieldWrapper 
+            label="External Link" 
+            error={validation.getFieldError('externalLink')}
+          >
             <input
               id="externalLink"
               type="url"
               value={externalLink}
-              onChange={(e) => setExternalLink(e.target.value)}
-              className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
+              onChange={(e) => handleExternalLinkChange(e.target.value)}
+              className={`block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border rounded-lg shadow-sm focus:ring-1 transition-colors ${
+                validation.hasFieldError('externalLink') 
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+              }`}
               placeholder="https://example.com/customer-story"
             />
             <p className="text-xs text-gray-500">
               If provided, this link will be used instead of content sections
             </p>
-          </div>
+          </FieldWrapper>
 
           {/* Content Sections */}
           {!externalLink && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900">Content Sections</h3>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Content Sections <span className="text-red-500">*</span>
+                </h3>
                 <button
                   type="button"
                   onClick={addContentSection}
@@ -713,35 +782,43 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">SEO Settings</h3>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="seoTitle" className="block text-sm font-medium text-gray-700">
-                    SEO Title
-                  </label>
+                <FieldWrapper 
+                  label="SEO Title" 
+                  error={validation.getFieldError('seoTitle')}
+                >
                   <input
                     id="seoTitle"
                     type="text"
                     value={seoTitle}
-                    onChange={(e) => setSeoTitle(e.target.value)}
-                    className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
+                    onChange={(e) => handleSeoTitleChange(e.target.value)}
+                    className={`block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border rounded-lg shadow-sm focus:ring-1 transition-colors ${
+                      validation.hasFieldError('seoTitle') 
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+                    }`}
                     placeholder="SEO optimized title for search engines"
                   />
-                  <p className="text-xs text-gray-500">Recommended: 50-60 characters</p>
-                </div>
+                  <p className="text-xs text-gray-500 mt-1">Recommended: 50-60 characters</p>
+                </FieldWrapper>
 
-                <div className="space-y-2">
-                  <label htmlFor="seoDescription" className="block text-sm font-medium text-gray-700">
-                    SEO Description
-                  </label>
+                <FieldWrapper 
+                  label="SEO Description" 
+                  error={validation.getFieldError('seoDescription')}
+                >
                   <textarea
                     id="seoDescription"
                     value={seoDescription}
-                    onChange={(e) => setSeoDescription(e.target.value)}
+                    onChange={(e) => handleSeoDescriptionChange(e.target.value)}
                     rows={4}
-                    className="block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors resize-none"
+                    className={`block w-full px-4 py-3 text-gray-900 placeholder-gray-500 border rounded-lg shadow-sm focus:ring-1 transition-colors resize-none ${
+                      validation.hasFieldError('seoDescription') 
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+                    }`}
                     placeholder="Brief description that appears in search results"
                   />
-                  <p className="text-xs text-gray-500">Recommended: 150-160 characters</p>
-                </div>
+                  <p className="text-xs text-gray-500 mt-1">Recommended: 150-160 characters</p>
+                </FieldWrapper>
               </div>
             </div>
           </div>
@@ -761,18 +838,11 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
                     onChange={(e) => setIndustry(e.target.value)}
                     className="block w-full px-4 py-3 text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-colors"
                   >
+                    <option value="LEAGUES_AND_FEDERATIONS">Leagues & Federations</option>
                     <option value="TEAM">Team</option>
                     <option value="BROADCASTERS_AND_OTT_PLATFORMS">Broadcasters & OTT Platforms</option>
                     <option value="PUBLISHERS">Publishers</option>
                     <option value="GAMING_OPERATORS">Gaming Operators</option>
-                    <option value="VIDEO_TECHNOLOGY_AND_AUTOMATED_CONTENT_CREATION">Video Technology & Automated Content Creation</option>
-                    <option value="DIGITAL_PLATFORMS">Digital Platforms</option>
-                    <option value="FAN_DATA_AND_CRM_CONSULTING">Fan Data & CRM Consulting</option>
-                    <option value="MARKETING_AND_COMMUNITY">Marketing & Community</option>
-                    <option value="GAMING_AND_FAN_LOYALTY">Gaming & Fan Loyalty</option>
-                    <option value="MANAGEMENT">Management</option>
-                    <option value="VIDEO_PRODUCTION">Video Production</option>
-                    <option value="SPORTS_DATA_SOLUTIONS">Sports Data Solutions</option>
                   </select>
                 </div>
 
@@ -798,12 +868,16 @@ export default function CustomerStoryEditor({ initialData, onSave, onCancel, isL
               </button>
               <button
                 type="submit"
-                disabled={isLoading}
-                className="inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={isLoading || !validation.isSubmittable}
+                className={`inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed transition-colors ${
+                  isLoading || !validation.isSubmittable
+                    ? 'text-gray-400 bg-gray-300 cursor-not-allowed'
+                    : 'text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
+                }`}
               >
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
                       <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
                     </svg>

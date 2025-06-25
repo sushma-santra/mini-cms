@@ -1,0 +1,40 @@
+meta {
+  name: Submit Career Form
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/submit
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  module_name: careers
+  first_name: John
+  last_name: Doe
+  email: john.doe@example.com
+  job_title: Software Developer
+  captcha: <recaptcha-token>
+}
+
+docs {
+  name: Career Form Submission API
+  desc: |
+    Submit a career application form. Requires reCAPTCHA verification.
+    Supports optional CV file upload (use careers-form-with-cv.bru for file uploads).
+    
+    Response:
+    - 200: Submission successful
+    - 400: Validation error or invalid captcha
+    - 500: Server error
+
+  params:
+    module_name: Type of form submission (required, must be "careers")
+    first_name: Applicant's first name (required)
+    last_name: Applicant's last name (required)
+    email: Valid email address (required)
+    job_title: Position title applying for (optional)
+    captcha: Valid reCAPTCHA token (required)
+} 
