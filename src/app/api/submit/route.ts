@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { zohoAPI } from '@/lib/zoho-api';
 import { logger } from '@/lib/logger';
 import { handleCorsPreflightRequest, createCorsResponse } from '@/lib/cors';
+import { mandrillService } from '@/lib/mandrill';
 
 // Handle preflight OPTIONS requests
 export async function OPTIONS(request: Request) {
@@ -53,6 +54,19 @@ export async function POST(request: Request) {
               data: ebookData
             });
           });
+
+        // Send confirmation email in background (non-blocking)
+        mandrillService.sendConfirmationEmail({
+          email: ebookData.email,
+          firstName: ebookData.first_name,
+          lastName: ebookData.last_name,
+          moduleType: 'ebook'
+        }).catch(error => {
+          logger.error('Failed to send confirmation email for ebook:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            email: ebookData.email
+          });
+        });
         break;
       }
 
@@ -72,6 +86,17 @@ export async function POST(request: Request) {
               data: newsletterData
             });
           });
+
+        // Send confirmation email in background (non-blocking)
+        mandrillService.sendConfirmationEmail({
+          email: newsletterData.email,
+          moduleType: 'newsletter'
+        }).catch(error => {
+          logger.error('Failed to send confirmation email for newsletter:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            email: newsletterData.email
+          });
+        });
         break;
       }
 
@@ -99,6 +124,19 @@ export async function POST(request: Request) {
               data: contactData
             });
           });
+
+        // Send confirmation email in background (non-blocking)
+        mandrillService.sendConfirmationEmail({
+          email: contactData.email,
+          firstName: contactData.first_name,
+          lastName: contactData.last_name,
+          moduleType: 'contacts'
+        }).catch(error => {
+          logger.error('Failed to send confirmation email for contact:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            email: contactData.email
+          });
+        });
         break;
       }
     }
