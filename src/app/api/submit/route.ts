@@ -5,6 +5,12 @@ import { submissionSchema } from '@/lib/form-validation';
 import { z } from 'zod';
 import { zohoAPI } from '@/lib/zoho-api';
 import { logger } from '@/lib/logger';
+import { handleCorsPreflightRequest, createCorsResponse } from '@/lib/cors';
+
+// Handle preflight OPTIONS requests
+export async function OPTIONS(request: Request) {
+  return handleCorsPreflightRequest(request as any);
+}
 
 export async function POST(request: Request) {
   try {
@@ -17,9 +23,10 @@ export async function POST(request: Request) {
     // Verify reCAPTCHA
     const isValidCaptcha = await verifyRecaptcha(validatedData.captcha);
     if (!isValidCaptcha) {
-      return NextResponse.json(
+      return createCorsResponse(
         { error: 'Invalid captcha verification' },
-        { status: 400 }
+        { status: 400 },
+        request as any
       );
     }
 
@@ -96,13 +103,13 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    return createCorsResponse({
       success: true,
       message: "Submission successful",
       data: [],
       pagination: {},
       filters: {}
-    });
+    }, {}, request as any);
 
   } catch (error) {
     logger.error('Form submission failed:', {
@@ -110,21 +117,21 @@ export async function POST(request: Request) {
     });
 
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
+      return createCorsResponse({
         success: false,
         message: "Validation failed",
         data: error.errors,
         pagination: {},
         filters: {}
-      }, { status: 400 });
+      }, { status: 400 }, request as any);
     }
 
-    return NextResponse.json({
+    return createCorsResponse({
       success: false,
       message: "Internal server error",
       data: [],
       pagination: {},
       filters: {}
-    }, { status: 500 });
+    }, { status: 500 }, request as any);
   }
 } 
