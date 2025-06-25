@@ -51,9 +51,9 @@ export default function CustomerStoriesPage() {
     }
   }, [token])
 
-  const fetchCustomerStories = async (showToast = false) => {
+  const fetchCustomerStories = async (pageNum: number = pagination.page, showToast = false) => {
     try {
-      const response = await fetch('/api/customerstories', {
+      const response = await fetch(`/api/customerstories?page=${pageNum}&limit=${pagination.limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -98,7 +98,7 @@ export default function CustomerStoriesPage() {
       
       if (data.success) {
         toast.success(data.message || 'Customer story deleted successfully')
-        fetchCustomerStories(true) // Refresh the list and show toast
+        fetchCustomerStories(1, true) // Refresh the list and show toast
       } else {
         toast.error(data.message || 'Failed to delete customer story')
       }
@@ -201,6 +201,39 @@ export default function CustomerStoriesPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {customerStories.length > 0 && (
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} customer stories
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => fetchCustomerStories(pagination.page - 1)}
+              disabled={!pagination.hasPrev}
+              className={`px-3 py-1 text-sm rounded-md ${
+                pagination.hasPrev
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => fetchCustomerStories(pagination.page + 1)}
+              disabled={!pagination.hasNext}
+              className={`px-3 py-1 text-sm rounded-md ${
+                pagination.hasNext
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

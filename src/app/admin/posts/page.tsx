@@ -62,9 +62,9 @@ export default function PostsPage() {
     }
   }, [token])
 
-  const fetchPosts = async (showToast = false) => {
+  const fetchPosts = async (pageNum: number = pagination.page, showToast = false) => {
     try {
-      const response = await fetch('/api/posts', {
+      const response = await fetch(`/api/posts?page=${pageNum}&limit=${pagination.limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -109,7 +109,7 @@ export default function PostsPage() {
       
       if (data.success) {
         toast.success(data.message || 'Post deleted successfully')
-        fetchPosts(true) // Refresh the list and show toast
+        fetchPosts(1, true) // Refresh the list and show toast
       } else {
         toast.error(data.message || 'Failed to delete post')
       }
@@ -227,7 +227,7 @@ export default function PostsPage() {
           </div>
           <div className="flex space-x-2">
             <button
-              onClick={() => fetchPosts()}
+              onClick={() => fetchPosts(pagination.page - 1)}
               disabled={!pagination.hasPrev}
               className={`px-3 py-1 text-sm rounded-md ${
                 pagination.hasPrev
@@ -238,7 +238,7 @@ export default function PostsPage() {
               Previous
             </button>
             <button
-              onClick={() => fetchPosts()}
+              onClick={() => fetchPosts(pagination.page + 1)}
               disabled={!pagination.hasNext}
               className={`px-3 py-1 text-sm rounded-md ${
                 pagination.hasNext
