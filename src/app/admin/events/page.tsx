@@ -61,7 +61,7 @@ export default function EventsPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm.length >= 3) {
-        fetchEvents(true)
+        fetchEvents(1, true)
       }
     }, 500)
 
@@ -70,12 +70,12 @@ export default function EventsPage() {
 
   // Status filter effect
   useEffect(() => {
-    fetchEvents(true)
+    fetchEvents(1, true)
   }, [statusFilter])
 
-  const fetchEvents = async (showToast = false) => {
+  const fetchEvents = async (pageNum: number = pagination.page, showToast = false) => {
     try {
-      let url = '/api/events?'
+      let url = `/api/events?page=${pageNum}&limit=${pagination.limit}&`
       if (searchTerm.length >= 3) {
         url += `search=${encodeURIComponent(searchTerm)}&`
       }
@@ -125,7 +125,7 @@ export default function EventsPage() {
       
       if (data.success) {
         toast.success(data.message || 'Event deleted successfully')
-        fetchEvents() // Refresh the list
+        fetchEvents(1) // Refresh the list
       } else {
         toast.error(data.message || 'Failed to delete event')
       }
@@ -265,6 +265,39 @@ export default function EventsPage() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {events.length > 0 && (
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} events
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => fetchEvents(pagination.page - 1)}
+              disabled={!pagination.hasPrev}
+              className={`px-3 py-1 text-sm rounded-md ${
+                pagination.hasPrev
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => fetchEvents(pagination.page + 1)}
+              disabled={!pagination.hasNext}
+              className={`px-3 py-1 text-sm rounded-md ${
+                pagination.hasNext
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
