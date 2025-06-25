@@ -5,10 +5,10 @@ const SKIP_RECAPTCHA = process.env.NODE_ENV === 'development' || process.env.SKI
 
 export async function verifyRecaptcha(token: string): Promise<boolean> {
   // Skip verification in development or if explicitly disabled
-  // if (SKIP_RECAPTCHA) {
-  //   console.warn('⚠️ reCAPTCHA verification is disabled');
-  //   return true;
-  // }
+  if (SKIP_RECAPTCHA) {
+    console.warn('⚠️ reCAPTCHA verification is disabled');
+    return true;
+  }
 
   if (!RECAPTCHA_SECRET_KEY) {
     console.warn('⚠️ RECAPTCHA_SECRET_KEY is not configured');
